@@ -1,0 +1,3 @@
+[submodule "ded"]
+	path = ded
+	url = https://github.com/abel1502/mipt_2s_ded
