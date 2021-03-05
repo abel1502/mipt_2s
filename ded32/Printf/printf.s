@@ -449,8 +449,10 @@ times 'x'-'u'-1 db 0
 
 %macro putNumLg 2
 ; Subfunc; non-zero result indicates error
-; bool %2(unsigned [long long] num);
+; bool %2(unsigned num);
 .%2:		
+		mov ecx, ecx  ; TODO: Maybe movsx
+		
 		mov r12, rdi
 		mov rdi, [numBufStart]
 		
