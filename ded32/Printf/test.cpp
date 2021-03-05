@@ -7,7 +7,7 @@ extern "C" unsigned testCppCallback(unsigned a, unsigned b) {
 }
 
 int main() {
-	aprintf("Hi?..\nYes, hi indeed!\nThis is %%d: %d\nThis is %%s: %s\n", 123, "YES, I AM!");
+	aprintf("Hi?..\nYes, hi indeed!\nThis is %%d: %d\nThis is %%s: %s\n%%d vs %%u: %d, %u\n", 123, "YES, I AM!", -123, -123);
 	
 	return 0;
 }

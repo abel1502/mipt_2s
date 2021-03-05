@@ -190,6 +190,8 @@ aprintf:
 		mov rcx, arg(rax)
 		inc al
 		mov byte [curArg], al
+		xor rdx, rdx
+		inc rdx
 		call .putNumD
 		test rax, rax
 		jnz .end
@@ -233,8 +235,16 @@ aprintf:
 		
 		jmp .loop
 		
-.percentU:	; TODO: Maybe ignore for now
-		jmp .percentUnreg
+.percentU:	xor rax, rax
+		mov al, byte [curArg]
+		mov rcx, arg(rax)
+		inc al
+		mov byte [curArg], al
+		xor rdx, rdx
+		call .putNumD
+		test rax, rax
+		jnz .end
+		inc fmt
 		jmp .loop
 		
 .percentX:	xor rax, rax
@@ -439,7 +449,7 @@ times 'x'-'u'-1 db 0
 
 %macro putNumLg 2
 ; Subfunc; non-zero result indicates error
-; bool %2(unsigned long long num);
+; bool %2(unsigned [long long] num);
 .%2:		
 		mov r12, rdi
 		mov rdi, [numBufStart]
@@ -513,13 +523,17 @@ putNumLg 3, putNumOct
 putNumLg 4, putNumHex
 
 ; Subfunc; non-zero result indicates error
-; bool putNumD(unsigned long long num);
+; bool putNumD(unsigned num, bool considerSign);
 .putNumD:	
+		movsx rcx, ecx
+		
 		mov r12, rdi
 		mov rdi, [numBufStart]
 		
 		test rcx, rcx
 		jns .putNumD.noSign
+		test rdx, rdx
+		jz .putNumD.noSign
 		
 		neg rcx
 		mov [rdi], byte '-'
@@ -558,6 +572,12 @@ putNumLg 4, putNumHex
 .putNumD.nonZero:	
 		xor rcx, rcx
 		dec rdi
+		
+		mov rax, [numBufStart]
+		mov al, [rax]
+		cmp al, '-'
+		jne .putNumD.loopReverse
+		inc rcx
 		
 .putNumD.loopReverse:
 		mov rax, [numBufStart]
