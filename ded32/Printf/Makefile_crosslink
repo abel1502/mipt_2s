@@ -15,7 +15,7 @@ LINK_FLAGS	= -subsystem:CONSOLE \
 			  -libpath:"C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.26.28801\lib\x64" \
 			  -libpath:"C:\Windows Kits\10\Lib\10.0.18362.0\ucrt\x64" \
 			  $(LINK_LIBS)
-
+#			  -entry:_start \
 
 # ------------------------------------------
 

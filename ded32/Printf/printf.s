@@ -9,6 +9,8 @@ extern HeapAlloc	; DECLSPEC_ALLOCATOR LPVOID HeapAlloc(HANDLE hHeap, DWORD  dwFl
 extern HeapReAlloc	; DECLSPEC_ALLOCATOR LPVOID HeapReAlloc(HANDLE hHeap, DWORD dwFlags, _Frees_ptr_opt_ LPVOID lpMem, SIZE_T dwBytes);
 extern HeapFree		; BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, _Frees_ptr_opt_ LPVOID lpMem);
 
+extern testCppCallback	; unsigned testCppCallback(unsigned a, unsigned b)
+
 
 ;%include "general.s.inc"
 
@@ -17,16 +19,27 @@ section .text code
 
 global _start
 _start:		
-		push 0
-		push 777123o
-		mov r9, 01110111b
-		mov r8, 3802
-		mov rdx, 'Q'
-		mov rcx, Msg
+		; push 0
+		; push 777123o
+		; mov r9, 01110111b
+		; mov r8, 3802
+		; mov rdx, 'Q'
+		; mov rcx, Msg
+		; sub rsp, byte 32
+		; call aprintf
+		; add rsp, byte 32
+		
+		mov ecx, 123
+		mov edx, 456
 		sub rsp, byte 32
+		call testCppCallback
+		;add rsp, byte 32
+		
+		mov rcx, CallbackResultMsg
+		mov edx, eax
+		;sub rsp, byte 32
 		call aprintf
 		add rsp, byte 32
-		
 		
 .end:		xor rcx, rcx
 		sub rsp, byte 32
@@ -146,6 +159,8 @@ aprintf:
 .percentEsc:	xor rcx, rcx
 		mov cl, '%'
 		call .putc
+		test rax, rax
+		jnz .end
 		inc fmt
 		inc buf
 		jmp .loop
@@ -156,6 +171,8 @@ aprintf:
 		inc al
 		mov byte [curArg], al
 		call .putNumBin
+		test rax, rax
+		jnz .end
 		inc fmt
 		jmp .loop
 		
@@ -168,7 +185,15 @@ aprintf:
 		inc fmt
 		jmp .loop
 		
-.percentD:	
+.percentD:	xor rax, rax
+		mov al, byte [curArg]
+		mov rcx, arg(rax)
+		inc al
+		mov byte [curArg], al
+		call .putNumD
+		test rax, rax
+		jnz .end
+		inc fmt
 		jmp .loop
 		
 .percentO:	xor rax, rax
@@ -177,13 +202,39 @@ aprintf:
 		inc al
 		mov byte [curArg], al
 		call .putNumOct
+		test rax, rax
+		jnz .end
 		inc fmt
 		jmp .loop
 		
-.percentS:	
+.percentS:	xor rax, rax
+		mov al, byte [curArg]
+		mov rdx, arg(rax)
+		inc al
+		mov byte [curArg], al
+		
+		;int3
+		
+		xor rcx, rcx
+		dec rcx
+		mov r12, rdi
+		xor al, al
+		mov rdi, rdx
+		repne scasb
+		mov rdi, r12
+		
+		inc rcx
+		neg rcx
+		
+		call .puts
+		test rax, rax
+		jnz .end
+		inc fmt
+		
 		jmp .loop
 		
 .percentU:	; TODO: Maybe ignore for now
+		jmp .percentUnreg
 		jmp .loop
 		
 .percentX:	xor rax, rax
@@ -192,18 +243,24 @@ aprintf:
 		inc al
 		mov byte [curArg], al
 		call .putNumHex
+		test rax, rax
+		jnz .end
 		inc fmt
 		jmp .loop
 		
 .percentUnreg:	xor rcx, rcx
 		mov cl, '%'
 		call .putc
+		test rax, rax
+		jnz .end
 		
 		; Fallthrough
 		
 .regularChar:	xor rcx, rcx
 		mov cl, [fmt]
 		call .putc
+		test rax, rax
+		jnz .end
 		inc fmt
 		jmp .loop
 
@@ -301,6 +358,8 @@ times 'x'-'u'-1 db 0
 		mov [buf], cl
 		inc buf
 		
+		xor rax, rax
+		
 		ret
 
 
@@ -333,6 +392,8 @@ times 'x'-'u'-1 db 0
 		mov rsi, rdx
 		repnz movsb
 		mov rsi, r12
+		
+		xor rax, rax
 		
 		ret
 
@@ -390,6 +451,7 @@ times 'x'-'u'-1 db 0
 		
 		mov rax, rcx
 		and rax, (1 << %1) - 1
+		;bzhi rax rcx %1
 		shr rcx, %1
 		
 		cmp al, 10
@@ -426,13 +488,14 @@ times 'x'-'u'-1 db 0
 		xchg dl, [rdi]
 		mov [rax + rcx], dl
 		
+		inc rcx
+		dec rdi
+		
 		mov rax, [numBufStart]
 		lea rax, [rax + rcx]
 		cmp rax, rdi
 		jae .%2.endLoopReverse
 		
-		inc rcx
-		dec rdi
 		jmp .%2.loopReverse
 .%2.endLoopReverse:
 
@@ -449,6 +512,79 @@ putNumLg 1, putNumBin
 putNumLg 3, putNumOct
 putNumLg 4, putNumHex
 
+; Subfunc; non-zero result indicates error
+; bool putNumD(unsigned long long num);
+.putNumD:	
+		mov r12, rdi
+		mov rdi, [numBufStart]
+		
+		test rcx, rcx
+		jns .putNumD.noSign
+		
+		neg rcx
+		mov [rdi], byte '-'
+		inc rdi
+		
+.putNumD.noSign:
+		
+.putNumD.loop:	
+		test rcx, rcx
+		jz .putNumD.endLoop
+		
+		xor rdx, rdx
+		mov rax, rcx
+		mov ecx, 10
+		div rcx
+		mov rcx, rax
+		
+		mov eax, edx
+		
+		add al, '0'
+		mov [rdi], al
+		inc rdi
+		jmp .putNumD.loop
+.putNumD.endLoop:
+		
+		mov r8, rdi
+		sub r8, [numBufStart]
+		
+		test r8, r8
+		jnz .putNumD.nonZero
+		
+		mov [rdi], byte '0'
+		inc rdi
+		inc r8
+		
+.putNumD.nonZero:	
+		xor rcx, rcx
+		dec rdi
+		
+.putNumD.loopReverse:
+		mov rax, [numBufStart]
+		mov dl, [rax + rcx]
+		xchg dl, [rdi]
+		mov [rax + rcx], dl
+		
+		inc rcx
+		dec rdi
+		
+		mov rax, [numBufStart]
+		lea rax, [rax + rcx]
+		cmp rax, rdi
+		jae .putNumD.endLoopReverse
+		
+		jmp .putNumD.loopReverse
+.putNumD.endLoopReverse:
+
+		mov rdi, r12
+		
+		mov rcx, r8
+		mov rdx, [numBufStart]
+		call .puts
+		
+		ret
+		
+		ret
 
 		
 %pop aprintf
@@ -459,3 +595,8 @@ section .data data
 		
 Msg		db `Hello :)\n'%c', 0x%x, 0b%b, 0o%o.\nZero is printed like %x.\n\0`
 MsgLen		equ $ - Msg - 1
+
+CallbackResultMsg \
+		db `// ... and got 0x%x\n\0`
+CallbackResultMsgLen \
+		equ $ - CallbackResultMsg - 1
