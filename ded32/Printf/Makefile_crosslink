@@ -1,0 +1,55 @@
+NAME	= printf
+SRC_ASM	= printf.s
+
+# TODO: Fasm
+NASM	= ../Asm32/Asm32/nasm
+CC		= "C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.26.28801\bin\Hostx64\x64\cl"
+LINK	= "C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.26.28801\bin\Hostx64\x64\link"
+
+# TODO: -O ?
+CC_FLAGS	= 
+ASM_FLAGS	= -f win64
+LINK_LIBS	= kernel32.lib
+LINK_FLAGS	= -subsystem:CONSOLE \
+			  -libpath:"C:\Windows Kits\10\Lib\10.0.18362.0\um\x64" \
+			  -libpath:"C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.26.28801\lib\x64" \
+			  -libpath:"C:\Windows Kits\10\Lib\10.0.18362.0\ucrt\x64" \
+			  $(LINK_LIBS)
+
+
+# ------------------------------------------
+
+.PHONY : c cr clean
+
+OBJ_ASM	= $(SRC_ASM:.s=.obj)
+EXE		= $(NAME).exe
+
+
+c : $(EXE)
+
+
+cr : c
+	./$(EXE)
+
+
+$(EXE) :	$(OBJ_ASM) test.obj
+	@echo ### LINKING ###
+	$(LINK) -out:$(EXE) -machine:x64 $(LINK_FLAGS) $(OBJ_ASM) test.obj
+	
+
+test.obj : 	test.cpp
+	@echo ### CPP ###
+	$(CC) $(CC_FLAGS) -c -Fo"test.obj" test.cpp
+
+
+%.obj :		%.s
+	@echo ### ASM ###
+	$(NASM) $< $(ASM_FLAGS) -o $@ -l $*.lst
+
+
+# I was too lazy to figure out a way to make windows rm do this
+clean :
+	wsl -- rm *.obj
+
+
+
