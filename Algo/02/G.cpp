@@ -23,6 +23,7 @@ bcbd
 #include <cassert>
 #include <cstring>
 #include <new>
+#include <vector>
 
 
 class String {
@@ -63,15 +64,15 @@ public:
         capacity = 0;
     }
 
-    unsigned getSize() {
+    unsigned getSize() const {
         return size;
     }
 
-    unsigned getCapacity() {
+    unsigned getCapacity() const {
         return capacity;
     }
 
-    const char *getRaw() {
+    const char *getRaw() const {
         return buf;
     }
 
@@ -104,16 +105,119 @@ public:
         }
     }
 
-    void print() {
+    void print() const {
         printf("%s", buf);
     }
 
-    void println() {
+    void println() const {
         printf("%s\n", buf);
     }
 
     void adjustSize() {
         size = (unsigned)strlen(buf);
+    }
+
+    static void getLcs(std::vector<unsigned> &dp, const char *a, const char *b, unsigned aStart, unsigned aEnd, unsigned bStart, unsigned bEnd) {
+        bool aRev = false;
+        bool bRev = false;
+
+        if (aStart > aEnd) {
+            aRev = true;
+            std::swap(aStart, aEnd);
+            //aStart++;
+            //aEnd++;
+        }
+
+        if (bStart > bEnd) {
+            bRev = true;
+            std::swap(bStart, bEnd);
+            //bStart++;
+            //bEnd++;
+        }
+
+        unsigned aLen = aEnd - aStart;
+        unsigned bLen = bEnd - bStart;
+        dp.assign(aLen + 1, 0);
+        std::vector<unsigned> dp2(aLen + 1, 0);
+
+        for (unsigned i = 0; i < bLen; ++i) {
+            for (unsigned j = 0; j < aLen; ++j) {
+                char aVal = 0;
+                char bVal = 0;
+
+                if (aRev)
+                    aVal = a[aEnd - 1 - j];
+                else
+                    aVal = a[aStart + j];
+
+                if (bRev)
+                    bVal = b[bEnd - 1 - i];
+                else
+                    bVal = b[bStart + i];
+
+                if (aVal == bVal) {
+                    dp2[j + 1] = dp[j] + 1;
+                }
+
+                dp2[j + 1] = std::max(dp[j + 1], dp2[j + 1]);
+                dp2[j + 1] = std::max(dp2[j + 1], dp2[j]);
+            }
+
+            dp.swap(dp2);
+        }
+
+        /*printf("DP: ");
+        for (unsigned i = 0; i < aLen + 1; ++i) {
+            printf("%u ", dp[i]);
+        }printf("\n");*/
+    }
+
+    void hirschberg(const char *a, const char *b, unsigned aStart, unsigned aEnd, unsigned bStart, unsigned bEnd) {
+        //printf("> [%u %u) [%u %u)\n", aStart, aEnd, bStart, bEnd);
+        static std::vector<unsigned> lcs1, lcs2;
+
+        /*printf(">\n");
+        for (unsigned i = aStart; i < aEnd; ++i)
+            printf("%c", a[i]);
+        printf("\n");
+        for (unsigned i = bStart; i < bEnd; ++i)
+            printf("%c", b[i]);
+        printf("\n");*/
+
+        if (bStart == bEnd)
+            return;
+
+        if (aStart + 1 == aEnd) {
+            for (unsigned i = bStart; i < bEnd; ++i) {
+                if (b[i] == a[aStart]) {
+                    (*this)[size++] = a[aStart];
+                    break;
+                }
+            }
+            return;
+        }
+
+        unsigned aMid = (aStart + aEnd) / 2;
+        getLcs(lcs1, b, a, bStart, bEnd, aStart, aMid);
+        getLcs(lcs2, b, a, bEnd, bStart, aEnd, aMid);  // TODO: Maybe do +1 for reversed
+
+        /*printf(">> ");
+        for (unsigned i = 0; i < lcs1.size(); ++i) {
+            printf("%u ", lcs1[i]);
+        } printf("\n");*/
+
+        unsigned max = 0;
+        unsigned maxInd = 0;
+        unsigned bLen = bEnd - bStart;
+        for (unsigned i = 0; i <= bLen; ++i) {
+            if (lcs1[i] + lcs2[bLen - i] >= max) {
+                max = lcs1[i] + lcs2[bLen - i];
+                maxInd = bStart + i;
+            }
+        }
+
+        hirschberg(a, b, aStart, aMid, bStart, maxInd);
+        hirschberg(a, b, aMid, aEnd, maxInd, bEnd);
     }
 
 private:
@@ -135,22 +239,8 @@ private:
 };
 
 
-struct Item {
-    unsigned value;
-
-    enum {
-        NONE,
-        LEFT,
-        RIGHT,
-        COMMON
-    } __attribute__((__packed__)) parentType;
-
-    static_assert(sizeof(parentType) == 1);
-};
-
-
 int main() {
-    String a{5001}, b{5001};  // Without preset capacities it might go as high as 8192 due to 2-degree resizes
+    String a{5001}, b{5001}, ans{5001};
 
     a.scan();
     b.scan();
@@ -158,75 +248,8 @@ int main() {
     unsigned n = a.getSize();
     unsigned m = b.getSize();
 
-    unsigned dpHeight = n + 1;
-    unsigned dpWidth = m + 1;
-
-    // Wow, I actually just found out new[] doesn't zero everything out by default...
-    Item *dp = new Item[dpHeight * dpWidth] {};
-
-    #define DP_(X, Y)    dp[(X) * dpWidth + (Y)]
-
-    for (unsigned i = 0; i < n; ++i) {
-        for (unsigned j = 0; j < m; ++j) {
-            if (a[i] == b[j]) {
-                DP_(i + 1, j + 1) = {DP_(i, j).value + 1, Item::COMMON};
-            } else if (DP_(i, j + 1).value > DP_(i + 1, j).value) {
-                DP_(i + 1, j + 1) = {DP_(i, j + 1).value, Item::LEFT};
-            } else {
-                DP_(i + 1, j + 1) = {DP_(i + 1, j).value, Item::RIGHT};
-            }
-        }
-    }
-
-    // b.~String();
-    // This somehow causes a WA 2
-
-    // String result{DP_(n, m).value + 1};
-    // Due to a memory limit answer will now be stored in b
-    // (I consider the person who decided to set a 16-kb memory limit incredibly dumb)
-    // (WAIT A SECOND - now that I see how the task claims "16 mb" instead, I can say
-    //  they're also a liar, and are terrible even at that. I despite them already...)
-
-    unsigned resPos = DP_(n, m).value - 1;
-    b[resPos + 1] = '\0';
-    b.adjustSize();
-
-    unsigned dpI = n;
-    unsigned dpJ = m;
-    bool finished = false;
-    while (!finished) {
-        switch (DP_(dpI, dpJ).parentType) {
-        case Item::LEFT:
-            dpI--;
-            break;
-
-        case Item::RIGHT:
-            dpJ--;
-            break;
-
-        case Item::COMMON:
-            dpI--;
-            dpJ--;
-            b[resPos--] = a[dpI];
-            break;
-
-        case Item::NONE:
-            finished = true;
-            break;
-
-        default:
-            assert(false);
-            break;
-        }
-    }
-
-    assert(resPos == (unsigned)-1);
-
-    b.println();
-
-    #undef DP_
-
-    delete[] dp;
+    ans.hirschberg(a.getRaw(), b.getRaw(), 0, n, 0, m);
+    ans.println();
 
     return 0;
 }
@@ -234,6 +257,8 @@ int main() {
 
 /*
 
-Same as F, essentially
+I first tried to do the same as in F, but id didn't work.
+There is a memory-efficient alternative - the Hirschberg algorithm,
+so that's what I implemented
 
 */
