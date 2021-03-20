@@ -47,9 +47,8 @@ test.obj : 	test.cpp
 	$(NASM) $< $(ASM_FLAGS) -o $@ -l $*.lst
 
 
-# I was too lazy to figure out a way to make windows rm do this
 clean :
-	wsl -- rm *.obj
+	rm *.obj
 
 
 

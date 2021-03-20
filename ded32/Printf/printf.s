@@ -8,6 +8,7 @@ extern GetProcessHeap	; HANDLE GetProcessHeap();
 extern HeapAlloc	; DECLSPEC_ALLOCATOR LPVOID HeapAlloc(HANDLE hHeap, DWORD  dwFlags, SIZE_T dwBytes);
 extern HeapReAlloc	; DECLSPEC_ALLOCATOR LPVOID HeapReAlloc(HANDLE hHeap, DWORD dwFlags, _Frees_ptr_opt_ LPVOID lpMem, SIZE_T dwBytes);
 extern HeapFree		; BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, _Frees_ptr_opt_ LPVOID lpMem);
+extern Beep		; BOOL Beep(DWORD dwFreq, DWORD dwDuration);
 
 extern testCppCallback	; unsigned testCppCallback(unsigned a, unsigned b)
 
@@ -27,7 +28,7 @@ _start:
 		; mov rcx, Msg
 		; sub rsp, byte 32
 		; call aprintf
-		; add rsp, byte 32
+		; add rsp, byte 32 + 2 * 8h
 		
 		mov ecx, 123
 		mov edx, 456
@@ -133,7 +134,7 @@ aprintf:
 		je .percent
 		jmp .regularChar
 		
-.percent:	; '%', 'b', 'c', 'd', 'o', 's', 'u', 'x'
+.percent:
 		; TODO: Macros?
 		
 		inc fmt
@@ -155,6 +156,14 @@ aprintf:
 		jmp rax
 		
 		jmp .loop
+		
+%macro nextArg 1
+		xor rax, rax
+		mov al, byte [curArg]
+		mov %1, arg(rax)
+		inc al
+		mov byte [curArg], al
+%endmacro
 
 .percentEsc:	xor rcx, rcx
 		mov cl, '%'
@@ -165,31 +174,21 @@ aprintf:
 		inc buf
 		jmp .loop
 
-.percentB:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentB:	nextArg rcx
 		call .putNumBin
 		test rax, rax
 		jnz .end
 		inc fmt
 		jmp .loop
 		
-.percentC:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentC:	nextArg rcx
 		call .putc
+		test rax, rax
+		jnz .end
 		inc fmt
 		jmp .loop
 		
-.percentD:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentD:	nextArg ecx
 		xor rdx, rdx
 		inc rdx
 		call .putNumD
@@ -198,24 +197,39 @@ aprintf:
 		inc fmt
 		jmp .loop
 		
-.percentO:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentM:	xor rcx, rcx
+		mov cl, byte MeowLen
+		mov rdx, Meow
+		call .puts
+		test rax, rax
+		jnz .end
+		
+		xor ecx, ecx
+		mov cx, 550
+		xor edx, edx
+		mov dx, 300
+		sub rsp, byte 32
+		call Beep  ; TODO: PlaySound
+		add rsp, byte 32
+		
+		inc fmt
+		jmp .loop	
+		
+.percentN:	nextArg rcx
+		mov rax, buf
+		sub rax, [bufStart]
+		mov [rcx], eax
+		inc fmt
+		jmp .loop
+		
+.percentO:	nextArg rcx
 		call .putNumOct
 		test rax, rax
 		jnz .end
 		inc fmt
 		jmp .loop
 		
-.percentS:	xor rax, rax
-		mov al, byte [curArg]
-		mov rdx, arg(rax)
-		inc al
-		mov byte [curArg], al
-		
-		;int3
+.percentS:	nextArg rdx
 		
 		xor rcx, rcx
 		dec rcx
@@ -235,11 +249,7 @@ aprintf:
 		
 		jmp .loop
 		
-.percentU:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentU:	nextArg rcx
 		xor rdx, rdx
 		call .putNumD
 		test rax, rax
@@ -247,11 +257,7 @@ aprintf:
 		inc fmt
 		jmp .loop
 		
-.percentX:	xor rax, rax
-		mov al, byte [curArg]
-		mov rcx, arg(rax)
-		inc al
-		mov byte [curArg], al
+.percentX:	nextArg rcx
 		call .putNumHex
 		test rax, rax
 		jnz .end
@@ -283,14 +289,18 @@ times 'c'-'b'-1 db 0
 		db 3 ; c
 times 'd'-'c'-1 db 0
 		db 4 ; d
-times 'o'-'d'-1 db 0
-		db 5 ; o
+times 'm'-'d'-1 db 0
+		db 5 ; m
+times 'n'-'m'-1 db 0
+		db 6 ; n
+times 'o'-'n'-1 db 0
+		db 7 ; o
 times 's'-'o'-1 db 0
-		db 6 ; s
+		db 8 ; s
 times 'u'-'s'-1 db 0
-		db 7 ; u
+		db 9 ; u
 times 'x'-'u'-1 db 0
-		db 8 ; x
+		db 10 ; x
 
 .jumpTable2:
 		dd .percentUnreg wrt ..imagebase
@@ -298,6 +308,8 @@ times 'x'-'u'-1 db 0
 		dd .percentB wrt ..imagebase
 		dd .percentC wrt ..imagebase
 		dd .percentD wrt ..imagebase
+		dd .percentM wrt ..imagebase
+		dd .percentN wrt ..imagebase
 		dd .percentO wrt ..imagebase
 		dd .percentS wrt ..imagebase
 		dd .percentU wrt ..imagebase
@@ -525,10 +537,16 @@ putNumLg 3, putNumOct
 putNumLg 4, putNumHex
 
 ; Subfunc; non-zero result indicates error
-; bool putNumD(unsigned num, bool considerSign);
+; bool putNumD(unsigned/int num, bool considerSign);
 .putNumD:	
+		test rdx, rdx
+		jz .putNumD.zx
 		movsx rcx, ecx
+		jmp .putNumD.skipZx
 		
+.putNumD.zx:	mov ecx, ecx
+.putNumD.skipZx:
+
 		mov r12, rdi
 		mov rdi, [numBufStart]
 		
@@ -615,8 +633,8 @@ putNumLg 4, putNumHex
 
 section .data data
 		
-Msg		db `Hello :)\n'%c', 0x%x, 0b%b, 0o%o.\nZero is printed like %x.\n\0`
-MsgLen		equ $ - Msg - 1
+Meow		db `<meow>\0`
+MeowLen		equ $ - Meow - 1
 
 CallbackResultMsg \
 		db `// ... and got 0x%x\n\0`
