@@ -1,0 +1,52 @@
+# depslib dependency file v1.0
+1616786112 source:d:\workspace\.mipt\s2\ded32\sse\mandelbrot\main.cpp
+	<TXLib.h>
+	<cassert>
+	"mandelbrot.h"
+
+1616759080 d:\workspace\.mipt\s2\ded32\sse\mandelbrot\sse.h
+	<mmintrin.h>
+	<xmmintrin.h>
+	<emmintrin.h>
+	<pmmintrin.h>
+	<tmmintrin.h>
+	<smmintrin.h>
+	<nmmintrin.h>
+	<immintrin.h>
+	<x86intrin.h>
+
+1616342847 source:d:\workspace\.mipt\s2\ded32\sse\mandelbrot\txlib_precompile.cpp
+	<TXLib.h>
+
+1616788544 source:d:\workspace\.mipt\s2\ded32\sse\mandelbrot\mandelbrot.cpp
+	"mandelbrot.h"
+	"sse.h"
+
+1616786103 d:\workspace\.mipt\s2\ded32\sse\mandelbrot\mandelbrot.h
+	<TXLib.h>
+
+1601040688 d:\workspace\.mipt\s2\ded32\sse\mandelbrot\txlin.h
+	<SDL.h>
+	<SDL_ttf.h>
+	<unistd.h>
+	<cstdlib>
+	<sys/types.h>
+	<cstring>
+	<iostream>
+	<fstream>
+	<sstream>
+	<cctype>
+	<cstdio>
+	<cmath>
+	<ctime>
+	<csignal>
+	<assert.h>
+	<string>
+	<vector>
+	<execinfo.h>
+	<pthread.h>
+
+1616783007 d:\workspace\.mipt\s2\ded32\sse\mandelbrot\txinclude.h
+	<TXLib.h>
+	<TXLin.h>
+

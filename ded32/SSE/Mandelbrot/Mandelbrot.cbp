@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Mandelbrot" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/Mandelbrot" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/Mandelbrot" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O3" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+			<Target title="Debug AVX2">
+				<Option output="bin/DebugAVX2/Mandelbrot" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/DebugAVX2/" />
+				<Option type="1" />
+				<Option compiler="cygwin" />
+				<Compiler>
+					<Add option="-m64" />
+					<Add option="-g" />
+					<Add option="-march=corei7-avx -mtune=corei7-avx" />
+					<Add option="-DUSE_AVX2" />
+				</Compiler>
+				<Linker>
+					<Add option="-m64" />
+				</Linker>
+			</Target>
+			<Target title="Release AVX2">
+				<Option output="bin/ReleaseAVX2/Mandelbrot" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/ReleaseAVX2/" />
+				<Option type="1" />
+				<Option compiler="cygwin" />
+				<Compiler>
+					<Add option="-O3" />
+					<Add option="-march=corei7-avx -mtune=corei7-avx" />
+					<Add option="-DUSE_AVX2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-std=gnu++17" />
+			<Add option="-m64" />
+			<Add option="-fexceptions" />
+			<Add option="-msse" />
+			<Add option="-msse2" />
+			<Add option="-msse3" />
+			<Add option="-mssse3" />
+			<Add option="-msse4" />
+			<Add option="-msse4.1" />
+			<Add option="-msse4.2" />
+			<Add option="-mavx" />
+			<Add option="-mavx2" />
+			<Add option="-mfpmath=sse" />
+			<Add option="-mpopcnt" />
+		</Compiler>
+		<Linker>
+			<Add option="-m64" />
+		</Linker>
+		<Unit filename="TXInclude.h" />
+		<Unit filename="main.cpp" />
+		<Unit filename="mandelbrot.cpp" />
+		<Unit filename="mandelbrot.h" />
+		<Unit filename="sse.h" />
+		<Extensions>
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
