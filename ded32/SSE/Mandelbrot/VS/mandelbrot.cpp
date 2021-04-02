@@ -213,7 +213,7 @@ inline void drawOnScreen(MandelbrotDisplay::screen_t screen, unsigned ix, unsign
     c32_pixels = _mm256_and_si256(_mm256_permute4x64_epi64(_mm256_packus_epi16(pixelsLow, pixelsHigh), 0xd8),
         _mm256_xor_si256(_mm256_cmpeq_epi32(i8_n, i8(iterations)), _mm256_set1_epi32(-1)));
 
-    _mm256_store_si256((__m256i*) & screen[iy][ix], c32_pixels);
+    _mm256_store_si256((__m256i*)&screen[iy][ix], c32_pixels);
 #endif
 }
 
@@ -297,6 +297,8 @@ void MandelbrotDisplay::renderLoop() {
         printf("\t\r%.3lf", txGetFPS());
         deltaT = 1.f / (float)txGetFPS();
         deltaT = fmaxf(fminf(deltaT, 10.f), 0.001f);
+
+        txSleep();
     }
 
     txEnd();

@@ -1,6 +1,9 @@
 #ifndef SSE_H
 #define SSE_H
 
+#undef min
+#undef max
+
 #include <mmintrin.h>   // MMX
 #include <xmmintrin.h>  // SSE
 #include <emmintrin.h>  // SSE2
