@@ -1,6 +1,8 @@
 #ifndef SSE_H
 #define SSE_H
 
+#ifndef NO_SSE
+
 #undef min
 #undef max
 
@@ -461,6 +463,7 @@ inline c16::operator c32() const {
 
 }
 
+#endif // NO_SSE
 
 #endif // SSE_H
 

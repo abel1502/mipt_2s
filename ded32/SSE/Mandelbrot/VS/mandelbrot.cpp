@@ -4,7 +4,9 @@
 #include <chrono>
 
 
+#ifndef NO_SSE
 using namespace sse;
+#endif
 
 
 MandelbrotDisplay::MandelbrotDisplay() :
@@ -20,6 +22,8 @@ MandelbrotDisplay::MandelbrotDisplay(unsigned new_iterations, float new_delta, f
     maxR2{maxR * maxR},
     centerX{new_centerX},
     centerY{new_centerY} {}
+
+#ifndef NO_SSE
 
 #ifndef USE_AVX2
 
@@ -263,7 +267,59 @@ bool MandelbrotDisplay::render(MandelbrotDisplay::screen_t screen, bool perfCnt)
     return false;
 }
 
-#endif
+#endif // USE_AVX2
+
+#else // NO_SSE
+
+inline void drawOnScreen(MandelbrotDisplay::screen_t screen, unsigned ix, unsigned iy, unsigned n, const unsigned iterations) {
+    unsigned saturation = (unsigned)(sqrt(sqrt((float)n / (float)iterations)) * 255.f);
+
+    if (n == iterations)
+        screen[iy][ix] = RGBQUAD{0, 0, 0, 0};
+    else
+        screen[iy][ix] = RGBQUAD{(BYTE)(255 - saturation), BYTE((saturation & 1) << 6), (BYTE)saturation, 0};
+}
+
+bool MandelbrotDisplay::render(MandelbrotDisplay::screen_t screen, bool perfCnt) const {
+    float y0 = -(float)WND_HEIGHT / 2.f * delta + centerY;
+
+    for (unsigned iy = 0; iy < WND_HEIGHT; ++iy, y0 += delta) {
+        if (GetAsyncKeyState(VK_ESCAPE)) return true;
+
+        float x0 = -(float)WND_WIDTH / 2.f * delta + centerX;
+
+        for (unsigned ix = 0; ix < WND_WIDTH; ++ix, x0 += delta) {
+            float x = x0;
+            float y = y0;
+
+            unsigned n = 0;
+
+            for (unsigned i = 0; i < iterations ; ++i) {
+                float x2 = x * x;
+                float y2 = y * y;
+
+                bool cmp = x2 + y2 <= maxR2;
+
+                if (!cmp)
+                    break;
+
+                n += cmp;
+
+                float xy = x * y;
+
+                x = x2 - y2 + x0;
+                y = xy + xy + y0;
+            }
+
+            if (!perfCnt)
+                drawOnScreen(screen, ix, iy, n, iterations);
+        }
+    }
+
+    return false;
+}
+
+#endif // NO_SSE
 
 void MandelbrotDisplay::renderLoop() {
     txCreateWindow(WND_WIDTH, WND_HEIGHT);
@@ -275,21 +331,28 @@ void MandelbrotDisplay::renderLoop() {
     float deltaT = 0.f;
 
     while (true) {
+        constexpr float SHIFT_STEP = 10000.f;
         float shiftX = 0.f, shiftY = 0.f;
 
-        if (GetAsyncKeyState('A') & 0x8001) shiftX -= 10000.f * deltaT;
-        if (GetAsyncKeyState('D') & 0x8001) shiftX += 10000.f * deltaT;
-        if (GetAsyncKeyState('W') & 0x8001) shiftY += 10000.f * deltaT;
-        if (GetAsyncKeyState('S') & 0x8001) shiftY -= 10000.f * deltaT;
+        if (GetAsyncKeyState('A') & 0x8001) shiftX -= SHIFT_STEP * deltaT;
+        if (GetAsyncKeyState('D') & 0x8001) shiftX += SHIFT_STEP * deltaT;
+        if (GetAsyncKeyState('W') & 0x8001) shiftY += SHIFT_STEP * deltaT;
+        if (GetAsyncKeyState('S') & 0x8001) shiftY -= SHIFT_STEP * deltaT;
 
         shift(shiftX, shiftY);
 
+        constexpr float SCALE_STEP = 64.f;
         float scaleBy = 1.f;
 
-        if (GetAsyncKeyState('Q') & 0x8001) scaleBy *= pow(64.f, deltaT);
-        if (GetAsyncKeyState('E') & 0x8001) scaleBy /= pow(64.f, deltaT);
+        if (GetAsyncKeyState('Q') & 0x8001) scaleBy *= pow(SCALE_STEP, deltaT);
+        if (GetAsyncKeyState('E') & 0x8001) scaleBy /= pow(SCALE_STEP, deltaT);
 
         scale(scaleBy);
+
+        constexpr unsigned ITERS_STEP = 1;
+
+        if (GetAsyncKeyState('R') & 0x8001 && iterations <= 2048 - ITERS_STEP) iterations += ITERS_STEP;
+        if (GetAsyncKeyState('F') & 0x8001 && iterations >= 1 + ITERS_STEP) iterations -= ITERS_STEP;
 
         if (render(screen))
             break;
@@ -305,7 +368,7 @@ void MandelbrotDisplay::renderLoop() {
 }
 
 void MandelbrotDisplay::perfCount() const {
-    constexpr unsigned TEST_CNT = 500;
+    constexpr unsigned TEST_CNT = 200;
 
     Win32::_fpreset();
 

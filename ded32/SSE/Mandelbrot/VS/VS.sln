@@ -11,6 +11,8 @@ Global
 		Debug|x86 = Debug|x86
 		Release no AVX2|x64 = Release no AVX2|x64
 		Release no AVX2|x86 = Release no AVX2|x86
+		Release no SSE|x64 = Release no SSE|x64
+		Release no SSE|x86 = Release no SSE|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
@@ -23,6 +25,10 @@ Global
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no AVX2|x64.Build.0 = Release no AVX2|x64
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no AVX2|x86.ActiveCfg = Release no AVX2|Win32
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no AVX2|x86.Build.0 = Release no AVX2|Win32
+		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no SSE|x64.ActiveCfg = Release no SSE|x64
+		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no SSE|x64.Build.0 = Release no SSE|x64
+		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no SSE|x86.ActiveCfg = Release no SSE|Win32
+		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release no SSE|x86.Build.0 = Release no SSE|Win32
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release|x64.ActiveCfg = Release|x64
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release|x64.Build.0 = Release|x64
 		{A78277C8-6B01-4F37-AEE5-4E669684C89B}.Release|x86.ActiveCfg = Release|Win32
