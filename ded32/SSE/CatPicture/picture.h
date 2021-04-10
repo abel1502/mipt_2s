@@ -18,8 +18,8 @@ public:
     static constexpr unsigned CAT_HEIGHT = 140;
     static constexpr unsigned CAT_WIDTH = 240;
 
-    static constexpr unsigned CAT_Y = (WND_HEIGHT - CAT_HEIGHT) / 2 - 24;
-    static constexpr unsigned CAT_X = (WND_WIDTH - CAT_WIDTH) / 2;
+    static constexpr unsigned CAT_Y_DEFAULT = (WND_HEIGHT - CAT_HEIGHT) / 2 - 24;
+    static constexpr unsigned CAT_X_DEFAULT = (WND_WIDTH - CAT_WIDTH) / 2;
 
     typedef RGBQUAD(&screen_t)[WND_HEIGHT][WND_WIDTH];
 
@@ -37,12 +37,17 @@ public:
 
     void perfCount() const;
 
+    void shift(int distX, int distY);
+
 private:
     ULONG_PTR gdiToken;
     Gdiplus::Bitmap *tableBitmap;  // They have to be pointers because I can't init them in my initializer list, since I need to init gdi first
     Gdiplus::BitmapData table;
     Gdiplus::Bitmap *catBitmap;
     Gdiplus::BitmapData cat;
+
+    unsigned catX;
+    unsigned catY;
 
 };
 

@@ -15,7 +15,9 @@ PictureDisplay::PictureDisplay(const wchar_t *tableFileName, const wchar_t *catF
     tableBitmap{nullptr},
     table{},
     catBitmap{nullptr},
-    cat{} {
+    cat{},
+    catX{CAT_X_DEFAULT},
+    catY{CAT_Y_DEFAULT} {
 
     Gdiplus::GdiplusStartupInput gdiplusStartupInput{};
     Gdiplus::GdiplusStartup(&gdiToken, &gdiplusStartupInput, NULL);
@@ -35,6 +37,8 @@ PictureDisplay::PictureDisplay(const wchar_t *tableFileName, const wchar_t *catF
     }
 
     bounds = {0, 0, (INT)catBitmap->GetWidth(), (INT)catBitmap->GetHeight()};
+
+    assert(bounds.Height == CAT_HEIGHT && bounds.Width == CAT_WIDTH);
 
     if (catBitmap->LockBits(&bounds, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &cat) != Gdiplus::Ok) {
         abort();
@@ -66,7 +70,7 @@ bool PictureDisplay::render(screen_t screen, const bool perfCnt) const {
         if (GetAsyncKeyState(VK_ESCAPE)) return true;
 
         for (unsigned ix = 0; ix < CAT_WIDTH; ix += 8) {
-            c32 pixels = _mm256_load_si256((__m256i *)((RGBQUAD *)table.Scan0 + ((size_t)iy + CAT_Y) * WND_WIDTH + ix + CAT_X));
+            c32 pixels = _mm256_load_si256((__m256i *)((RGBQUAD *)table.Scan0 + ((size_t)iy + catY) * WND_WIDTH + ix + catX));
             c32 catPixels = _mm256_load_si256((__m256i *)((RGBQUAD *)cat.Scan0 + (size_t)iy * CAT_WIDTH + ix));
 
             // TODO: Measure performance here?
@@ -92,7 +96,7 @@ bool PictureDisplay::render(screen_t screen, const bool perfCnt) const {
             pixels = _mm256_permute4x64_epi64(_mm256_packus_epi16(pixelsLow, pixelsHigh), 0xd8);
 
             if (!perfCnt)
-                _mm256_store_si256((__m256i *)&screen[WND_HEIGHT - 1 - (CAT_Y + iy)][CAT_X + ix], catPixels + pixels);
+                _mm256_store_si256((__m256i *)&screen[WND_HEIGHT - 1 - (catY + iy)][catX + ix], catPixels + pixels);
             else
                 volatile int tmp = _mm256_movemask_epi8(catPixels + pixels);
         }
@@ -109,6 +113,18 @@ void PictureDisplay::renderLoop() {
     screen_t screen = (screen_t)*txVideoMemory();
 
     while (true) {
+        int shiftX = 0, shiftY = 0;
+
+        constexpr unsigned VSPEED = 4;
+        constexpr unsigned HSPEED = 8;
+
+        if (GetAsyncKeyState('A') & 0x8001) shiftX -= HSPEED;
+        if (GetAsyncKeyState('D') & 0x8001) shiftX += HSPEED;
+        if (GetAsyncKeyState('W') & 0x8001) shiftY -= VSPEED;
+        if (GetAsyncKeyState('S') & 0x8001) shiftY += VSPEED;
+
+        shift(shiftX, shiftY);
+
         if (render(screen))
             break;
 
@@ -142,4 +158,12 @@ void PictureDisplay::perfCount() const {
     txEnd();
 }
 
+void PictureDisplay::shift(int distX, int distY) {
+    if ((int)catX + distX >= 0 && (int)catX + CAT_WIDTH + distX <= WND_WIDTH) {
+        catX += distX;
+    }
 
+    if ((int)catY + distY >= 0 && (int)catY + CAT_HEIGHT + distY <= WND_HEIGHT) {
+        catY += distY;
+    }
+}

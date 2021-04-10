@@ -4,10 +4,10 @@
 
 
 int main(int argc, char** argv) {
-    ULONG_PTR token = NULL;
+    /*ULONG_PTR token = NULL;
     Gdiplus::GdiplusStartupInput gdiplusStartupInput{};
 
-    Gdiplus::GdiplusStartup(&token, &gdiplusStartupInput, NULL);
+    Gdiplus::GdiplusStartup(&token, &gdiplusStartupInput, NULL);*/
 
     if (argc < 3) {
         printf("Usage: %s <table> <cat> [-t]\n", argv[0]);
