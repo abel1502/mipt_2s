@@ -23,4 +23,14 @@ void err_(const char *funcName, int lineNo, const char *msg, ...) {
     va_end(args);
 }
 
+unsigned long long randLL() {
+    static unsigned long long rnd = 123;
+
+    rnd ^= rnd << 21;
+    rnd ^= rnd >> 35;
+    rnd ^= rnd << 4;
+
+    return rnd;
+}
+
 

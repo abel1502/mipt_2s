@@ -95,6 +95,8 @@ extern int verbosity;
 
 void err_(const char *funcName, int lineNo, const char *msg, ...);
 
+unsigned long long randLL();
+
 
 #endif // GENERAL_H_GUARD
 
