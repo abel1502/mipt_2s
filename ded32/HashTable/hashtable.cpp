@@ -9,6 +9,12 @@
 
 namespace abel {
 
+#ifdef __GNUC__
+const Hashtable::value_t Hashtable::NODE_FREE =    (Hashtable::value_t)0;
+const Hashtable::value_t Hashtable::NODE_DELETED = (Hashtable::value_t)1;
+const Hashtable::value_t Hashtable::NODE_SPECIAL = (Hashtable::value_t)256;
+#endif
+
 Hashtable::result_e Hashtable::ctor() {
     return ctor(DEFAULT_CAPACITY);
 }
