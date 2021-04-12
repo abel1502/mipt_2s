@@ -1,6 +1,6 @@
 /*
 
-To define unmangled alias {RAW} for the mangled names {MANGLED_GCC} (for gcc and clang) and {MANGLED_MSVC} (for msvc), do:
+To define an unmangled alias {RAW} for the mangled names {MANGLED_GCC} (for gcc and clang) and {MANGLED_MSVC} (for msvc), do:
 
 #if defined(__GNUC__)
 #pragma weak {MANGLED_GCC}={RAW}
