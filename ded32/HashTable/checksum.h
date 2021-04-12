@@ -30,6 +30,8 @@ crc32_t crc32_compute(const char *data, size_t size);
  */
 crc32_t crc32_update(crc32_t initial, const char *data, size_t size);
 
+uint64_t fnv1a_64(const char *data, size_t size);
+
 //--------------------------------------------------------------------------------
 
 #ifndef CHECKSUM_NOIMPL
@@ -121,6 +123,17 @@ crc32_t crc32_compute(const char *data, size_t size) {
     assert(data);
 
     return crc32_update(0, data, size);
+}
+
+uint64_t fnv1a_64(const char *data, size_t size) {
+    uint64_t hash = 14695981039346656037ull;
+
+    for (unsigned i = 0; i < size; ++i) {
+        hash ^= data[i];
+        hash *= 1099511628211ull;
+    }
+
+    return hash;
 }
 
 #endif // CHECKSUM_NOIMPL
