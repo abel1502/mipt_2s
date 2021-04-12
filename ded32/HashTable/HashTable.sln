@@ -9,6 +9,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Perf Test|x64 = Perf Test|x64
+		Perf Test|x86 = Perf Test|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
@@ -17,6 +19,10 @@ Global
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Debug|x64.Build.0 = Debug|x64
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Debug|x86.ActiveCfg = Debug|Win32
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Debug|x86.Build.0 = Debug|Win32
+		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Perf Test|x64.ActiveCfg = Perf Test|x64
+		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Perf Test|x64.Build.0 = Perf Test|x64
+		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Perf Test|x86.ActiveCfg = Perf Test|Win32
+		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Perf Test|x86.Build.0 = Perf Test|Win32
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Release|x64.ActiveCfg = Release|x64
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Release|x64.Build.0 = Release|x64
 		{6A905D2E-E622-4414-87CD-6AB605252A0C}.Release|x86.ActiveCfg = Release|Win32

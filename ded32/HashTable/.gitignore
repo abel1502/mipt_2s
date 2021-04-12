@@ -2,6 +2,8 @@
 /Debug
 /Release
 /x64
+/.linux-compile
 
 /dump
 /dump.svg
+/dict-en-rus_backup.dic
