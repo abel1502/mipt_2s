@@ -5,6 +5,11 @@
 #include <cstring>
 
 
+#ifdef _MSC_VER
+#define fileno _fileno
+#endif
+
+
 namespace abel {
 
 bool FileBuf::ctor() {
@@ -29,7 +34,7 @@ bool FileBuf::ctor(const char *name, const char *mode) {
     if (!file)
         goto error;
 
-    if (fstat(_fileno(file), &fbuf) != 0)
+    if (fstat(fileno(file), &fbuf) != 0)
         goto error;
 
     size = (size_t)fbuf.st_size + 1;
@@ -111,6 +116,10 @@ size_t FileBuf::getSize() const {
 
 size_t FileBuf::getLineCnt() const {
     return lineCnt;
+}
+
+char *FileBuf::getData() {
+    return buf;
 }
 
 const char *FileBuf::getData() const {

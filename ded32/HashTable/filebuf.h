@@ -30,6 +30,8 @@ public:
 
     size_t getLineCnt() const;
 
+    char *getData();
+
     const char *getData() const;
 
     bool isInited() const;

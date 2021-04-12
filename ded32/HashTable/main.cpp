@@ -10,6 +10,9 @@ To define unmangled alias {RAW} for the mangled names {MANGLED_GCC} (for gcc and
 
 */
 
+#undef UNICODE
+#undef _UNICODE
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -42,7 +45,7 @@ int main(int argc, char **argv) {
 
     int c = 0;
 
-    while ((c = getopt_a(argc, argv, "+vht:")) != -1) {
+    while ((c = getopt(argc, argv, "+vht:")) != -1) {
         switch (c) {
         case 'h':
             CLEANUP_;
@@ -51,10 +54,10 @@ int main(int argc, char **argv) {
             return 0;
 
         case 't':
-            if (tbuf.ctor(optarg_a, "r")) {
+            if (tbuf.ctor(optarg, "r")) {
                 CLEANUP_;
 
-                ERR("Couldn't open %s to read", optarg_a);
+                ERR("Couldn't open %s to read", optarg);
                 return 2;
             }
             break;

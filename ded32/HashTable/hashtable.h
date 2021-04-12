@@ -31,9 +31,15 @@ public:
     using value_t  = const char *;
     using mvalue_t = char *;  // Mutable
 
+    #ifdef __GNUC__
+    static const value_t NODE_FREE;
+    static const value_t NODE_DELETED;
+    static const value_t NODE_SPECIAL;
+    #else
     static constexpr value_t NODE_FREE    = (value_t)0;
     static constexpr value_t NODE_DELETED = (value_t)1;
     static constexpr value_t NODE_SPECIAL = (value_t)256;
+    #endif
 
     struct Node {
         key_t key;
