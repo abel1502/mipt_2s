@@ -23,7 +23,7 @@ public:
     };
 
     static constexpr unsigned DEFAULT_CAPACITY = 256;
-    static constexpr unsigned KEY_LEN = 32;
+    static constexpr unsigned KEY_LEN = 64;  // TODO: Maybe 56 to have the struct's total size be a power of 2
     static constexpr unsigned CRITICAL_LOAD_FACTOR = 0x80;  // per 0x100
     static constexpr unsigned RESIZE_FACTOR = 2;
 

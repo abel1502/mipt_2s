@@ -129,7 +129,7 @@ Hashtable::mvalue_t Hashtable::get(const key_t key) const {
             continue;
         }
 
-        if (strcmp(key, buf[curInd].key) == 0) {
+        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
             lastResult = R_OK;
             return const_cast<mvalue_t>(buf[curInd].value);
         }
@@ -187,7 +187,7 @@ Hashtable::result_e Hashtable::set(const key_t key, value_t value) {
             return lastResult = R_OK;
         }
 
-        if (strcmp(key, buf[curInd].key) == 0) {
+        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
             buf[curInd].value = value;
 
             return lastResult = R_OK;
@@ -224,7 +224,7 @@ Hashtable::result_e Hashtable::del(const key_t key) {
             continue;
         }
 
-        if (strcmp(key, buf[curInd].key) == 0) {
+        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
             buf[curInd].value = NODE_DELETED;
 
             return lastResult = R_OK;
