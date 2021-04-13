@@ -37,6 +37,42 @@ static void showHelp(const char *binName) {
 }
 
 
+static bool genGoodTestKeys(unsigned count, Hashtable::key_t *buf, const Hashtable *ht) {
+    unsigned capacity = ht->getCapacity();
+    const Hashtable::Node *htBuf = ht->debugGetBuf();
+
+    if (ht->getSize())
+        return true;
+
+    for (unsigned i = 0; i < count; ++i) {
+        unsigned idx = randLL() % capacity;
+
+        while (htBuf[idx].value < Hashtable::NODE_SPECIAL) {
+            idx = (idx + 1) % capacity;
+        }
+
+        memcpy(buf[i], htBuf[idx].key, Hashtable::KEY_LEN);
+    }
+
+    return false;
+}
+
+
+static bool genBadTestKeys(unsigned count, Hashtable::key_t *buf) {
+    for (unsigned i = 0; i < count; ++i) {
+        memset(buf, 0, Hashtable::KEY_LEN);
+
+        unsigned len = randLL() % Hashtable::KEY_LEN;
+
+        for (unsigned j = 0; j < len; ++j) {
+            buf[i][j] = randLL() & 0xff;
+        }
+    }
+
+    return false;
+}
+
+
 int main(int argc, char **argv) {
     FileBuf tbuf{};
 
@@ -98,7 +134,9 @@ int main(int argc, char **argv) {
     }
 
     Hashtable ht;
-    REQUIRE(!ht.ctor(32));
+    REQUIRE(!ht.ctor(&tbuf));
+
+    /*REQUIRE(!ht.ctor(32));
 
     Hashtable::key_t curKey = "";
 
@@ -111,9 +149,52 @@ int main(int argc, char **argv) {
     REQUIRE(!ht.set(curKey, "failure?"));
     REQUIRE(!ht.del(curKey));
     ht.castToKey("test", curKey);
-    REQUIRE(!ht.set(curKey, "success 3"));
+    REQUIRE(!ht.set(curKey, "success 3"));*/
 
-    ht.dump();
+    //ht.dump();
+
+    constexpr unsigned TEST_CNT = 10000;
+    constexpr unsigned TEST_KEY_CNT = 10000;
+    
+    Hashtable::key_t *testKeys = (Hashtable::key_t *)calloc(TEST_KEY_CNT * 2, sizeof(Hashtable::key_t));
+
+    REQUIRE(!genGoodTestKeys(TEST_KEY_CNT, testKeys, &ht));
+    REQUIRE(!genBadTestKeys(TEST_KEY_CNT, testKeys + TEST_KEY_CNT));
+
+    /*const Hashtable::key_t TEST_GOOD_KEYS[3] = {
+        "superexcellent",
+        "hash table",
+        "implementation",
+    };
+
+    const Hashtable::key_t TEST_BAD_KEYS[3] = {
+        "Anyone who dislikes my profiling",
+        "Ú1 (although it's actually quite a good key)",
+        "<Insert your password here>",
+    };
+
+    const Hashtable::key_t TEST_ANY_KEYS[6] = {
+        "superexcellent",
+        "hash table",
+        "implementation",
+        "Anyone who dislikes my profiling",
+        "Ú1 (although it's actually quite a good key)",
+        "<Insert your password here>",
+    };*/
+
+    //ht.dump();
+
+    /*srand(123);
+
+    for (unsigned i = 0; i < TEST_CNT; ++i) {
+        volatile char *result = ht.get(TEST_ANY_KEYS[rand() % 6]);
+    }*/
+
+    for (unsigned i = 0; i < TEST_CNT; ++i) {
+        volatile char *result = ht.get(testKeys[randLL() % (TEST_KEY_CNT * 2)]);
+    }
+
+    free(testKeys);
 
     ht.dtor();
 

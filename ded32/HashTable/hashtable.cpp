@@ -369,6 +369,9 @@ void Hashtable::dump() const {
 
     fclose(dfile);
 }
+
+const Hashtable::Node *Hashtable::debugGetBuf() const {
+    return buf;
 }
 
 #undef DUMP_

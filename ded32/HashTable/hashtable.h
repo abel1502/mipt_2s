@@ -18,6 +18,7 @@ public:
         R_BADPTR,
         R_BADSIZE,
         R_NOTFOUND,
+        R_BADFMT,
         R_NOTIMPL,    /// A very special result, saying the feature you're trying to use should be pesent, but isn't yet implemented
         // TODO
     };
@@ -103,6 +104,8 @@ public:
     result_e resize(unsigned new_capacity);
 
     void dump() const;
+
+    const Node *debugGetBuf() const;
 
 private:
     mutable result_e lastResult;
