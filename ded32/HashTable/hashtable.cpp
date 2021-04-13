@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
+#include <cctype>
 
 //#include <intrin.h>
 
@@ -42,41 +43,40 @@ Hashtable::result_e Hashtable::ctor(FileBuf *src) {
     if (ctor((unsigned)src->getLineCnt() + 2))  // TODO: Maybe change size for testing purposes
         return lastResult;
 
-    FileBufIterator fbi;
-    if (fbi.ctor(src))
-        return lastResult = R_BADMEMORY;  // Not exactly this, but FileBufIteratior ctor never fails anyway...
+    char *rawBuf = src->getData();
+    char cur = *(rawBuf++);
 
-    while (!fbi.isEof()) {
+    while (true) {
         key_t curKey = "";
         
         unsigned i = 0;
 
-        for (; i < KEY_LEN - 1 && !fbi.isEof() && fbi.cur() != '='; ++i) {
-            curKey[i] = fbi.next();
+        for (; i < KEY_LEN - 1 && (cur = *(rawBuf++)) && cur != '='; ++i) {
+            curKey[i] = cur;
         }
 
         memset(curKey + i, 0, KEY_LEN - i);
 
-        if (fbi.next() != '=')
+        if (!cur)
+            break;
+        else if (cur != '=')
             return lastResult = R_BADFMT;
 
-        fbi.skipSpace();
+        rawBuf++;
 
-        set(curKey, fbi.getPtr());
+        while (isspace(cur = *(rawBuf++))) {}
 
-        while (!fbi.isEof() && fbi.cur() != '\n') {
-            fbi.next();
+        set(curKey, rawBuf - 1);  // TODO: Test
+
+        while (cur && cur != '\n') {
+            cur = *(rawBuf++);
         }
 
-        if (fbi.isEof())
+        if (!cur)
             break;
 
-        *(src->getData() + fbi.getPos()) = '\0';
-
-        fbi.next();
+        *(rawBuf - 1) = '\0';
     }
-
-    fbi.dtor();
 
     return lastResult = R_OK;
 }
