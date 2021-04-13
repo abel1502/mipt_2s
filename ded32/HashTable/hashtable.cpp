@@ -291,7 +291,7 @@ Hashtable::result_e Hashtable::resize(unsigned new_capacity) {
 
 #define DUMP_(...)  fprintf(dfile, __VA_ARGS__)
 
-void Hashtable::dump() const {
+/*void Hashtable::dump() const {
     FILE *dfile = fopen("dump", "wb");
 
     if (!dfile) {
@@ -308,7 +308,7 @@ void Hashtable::dump() const {
         } else if (buf[i].value == NODE_DELETED) {
             DUMP_("%u [fontname=Consolas shape=box style=filled color=black fillcolor=\"crimson\" label=\"%u\\lDELETED (%u)\"]\n", i, i, hash(buf[i].key));
         } else {
-            DUMP_("%u [fontname=Consolas shape=box style=filled color=black fillcolor=\"#0096FF\" label=\"%u\\l\\\"%s\\\" (%u): \\\"%s\\\"\"]\n", i, i, buf[i].key, hash(buf[i].key), buf[i].value);
+            DUMP_("%u [fontname=Consolas shape=box style=filled color=black fillcolor=\"#0096FF\" label=<%u\\l\\\"%s\\\" (%u): \\\"%s\\\">]\n", i, i, buf[i].key, hash(buf[i].key), buf[i].value);
         }
                 
         if (i + 1 < capacity)
@@ -322,6 +322,53 @@ void Hashtable::dump() const {
 
     system("dot -O -Tsvg dump");
     system("start dump.svg");
+}*/
+
+void Hashtable::dump() const {
+    FILE *dfile = fopen("dump.txt", "wb");
+
+    if (!dfile) {
+        assert(false);
+        return;
+    }
+
+    /*DUMP_("Hashtable (status: %u)\n"
+          "capacity: %u\n"
+          "size: %u\n"
+          "deleted: %u\n", lastResult, capacity, size, deleted);*/
+
+    unsigned freeStart = 0;
+    bool isFree = false;
+
+    for (unsigned i = 0; i < capacity; ++i) {
+        if (buf[i].value == NODE_FREE) {
+            if (!isFree) {
+                isFree = true;
+                freeStart = i;
+            }
+
+            continue;
+        }
+        
+        if (isFree) {
+            /*if (i == freeStart + 1)
+                DUMP_("%u: FREE\n", freeStart);
+            else
+                DUMP_("%u-%u: FREE\n", freeStart, i - 1);*/
+
+            isFree = false;
+        }
+
+        if (buf[i].value == NODE_DELETED) {
+            //DUMP_("%u: DELETED (%u)\n", i, hash(buf[i].key));
+        } else {
+            //DUMP_("%u: \"%s\" (%u) -> \"%s\"\n", i, buf[i].key, hash(buf[i].key), buf[i].value);
+            DUMP_("%u\n", hash(buf[i].key));
+        }
+    }
+
+    fclose(dfile);
+}
 }
 
 #undef DUMP_
