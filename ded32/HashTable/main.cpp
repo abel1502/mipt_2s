@@ -16,7 +16,8 @@ To define an unmangled alias {RAW} for the mangled names {MANGLED_GCC} (for gcc 
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include <getopt.h>
+#include <chrono>
+#include <getopt.h>  // Has to beincluded after std headers, breaks them
 
 #define CHECKSUM_NOIMPL
 
@@ -71,6 +72,28 @@ static bool genBadTestKeys(unsigned count, Hashtable::key_t *buf) {
 
     return false;
 }
+
+
+#define TEST_FUNC_(NAME)                                                                                                                            \
+__declspec(noinline) volatile void test##NAME(const Hashtable *ht, unsigned testCount, unsigned testKeyCount, const Hashtable::key_t *testKeys) {   \
+    printf("Testing " #NAME " keys...\n");                                                                                                          \
+                                                                                                                                                    \
+    std::chrono::high_resolution_clock clk{};                                                                                                       \
+    auto tStart = clk.now();                                                                                                                        \
+                                                                                                                                                    \
+    while (testCount--) {                                                                                                                           \
+        volatile char *result = ht->get(testKeys[randLL() % testKeyCount]);                                                                         \
+    }                                                                                                                                               \
+                                                                                                                                                    \
+    auto tEnd = clk.now();                                                                                                                          \
+                                                                                                                                                    \
+    printf("Done, on average %lfms per query\n", (double)(tEnd - tStart).count() / (double)testCount * 1000.);                                                                         \
+}
+
+TEST_FUNC_(Good)
+TEST_FUNC_(Mixed)
+
+#undef TEST_FUNC_
 
 
 int main(int argc, char **argv) {
@@ -153,7 +176,6 @@ int main(int argc, char **argv) {
 
     //ht.dump();
 
-    constexpr unsigned TEST_CNT = 10000;
     constexpr unsigned TEST_KEY_CNT = 10000;
     
     Hashtable::key_t *testKeys = (Hashtable::key_t *)calloc(TEST_KEY_CNT * 2, sizeof(Hashtable::key_t));
@@ -190,9 +212,8 @@ int main(int argc, char **argv) {
         volatile char *result = ht.get(TEST_ANY_KEYS[rand() % 6]);
     }*/
 
-    for (unsigned i = 0; i < TEST_CNT; ++i) {
-        volatile char *result = ht.get(testKeys[randLL() % (TEST_KEY_CNT * 2)]);
-    }
+    testGood(&ht, 100000, TEST_KEY_CNT, testKeys);
+    testMixed(&ht, 5000, TEST_KEY_CNT * 2, testKeys);
 
     free(testKeys);
 
