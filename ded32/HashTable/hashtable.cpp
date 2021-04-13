@@ -42,9 +42,43 @@ Hashtable::result_e Hashtable::ctor(FileBuf *src) {
     if (ctor((unsigned)src->getLineCnt() + 2))  // TODO: Maybe change size for testing purposes
         return lastResult;
 
-    // TODO: Parse src
+    FileBufIterator fbi;
+    if (fbi.ctor(src))
+        return lastResult = R_BADMEMORY;  // Not exactly this, but FileBufIteratior ctor never fails anyway...
 
-    return lastResult = R_NOTIMPL;
+    while (!fbi.isEof()) {
+        key_t curKey = "";
+        
+        unsigned i = 0;
+
+        for (; i < KEY_LEN - 1 && !fbi.isEof() && fbi.cur() != '='; ++i) {
+            curKey[i] = fbi.next();
+        }
+
+        memset(curKey + i, 0, KEY_LEN - i);
+
+        if (fbi.next() != '=')
+            return lastResult = R_BADFMT;
+
+        fbi.skipSpace();
+
+        set(curKey, fbi.getPtr());
+
+        while (!fbi.isEof() && fbi.cur() != '\n') {
+            fbi.next();
+        }
+
+        if (fbi.isEof())
+            break;
+
+        *(src->getData() + fbi.getPos()) = '\0';
+
+        fbi.next();
+    }
+
+    fbi.dtor();
+
+    return lastResult = R_OK;
 }
 
 void Hashtable::dtor() {
