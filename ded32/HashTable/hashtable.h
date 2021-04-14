@@ -5,6 +5,8 @@
 #include "filebuf.h"
 #include "checksum.h"
 
+#include <cstring>
+
 
 namespace abel {
 
@@ -119,8 +121,10 @@ private:
     inline unsigned hash(const key_t key) const {
         //return crc32_compute(key, KEY_LEN) % capacity;  // On average 1140 items per bucket
         //return (0x61C88647ULL * (unsigned long long)crc32_compute(key, KEY_LEN) >> 32) % capacity;  // Exactly the same, indicating it was a problem with crc itself. I guess it shouldn't be used in hashtables
-        return fnv1a_64(key, KEY_LEN) % (unsigned long long)capacity;  // 1.5 per bucket. One. Point. Five. I don't think any intrinsicness of crc32 can compensate for this. (Although I'll still test it)
-        
+        // return fnv1a_64(key, KEY_LEN) % (unsigned long long)capacity;  // 1.5 per bucket. One. Point. Five. I don't think any intrinsicness of crc32 can compensate for this. (Although I'll still test it)
+        // return fnv1a_64_asm(key, KEY_LEN) % (unsigned long long)capacity;
+        return crc32_asm(key, KEY_LEN) % (unsigned long long)capacity;
+
         // TODO: If I stick to fnv1a_64, I could as well remove the key length limitation due to redundancy. It would probably only speed things up.
     }
 };
