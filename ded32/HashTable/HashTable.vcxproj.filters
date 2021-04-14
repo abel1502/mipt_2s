@@ -42,4 +42,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <NASM Include="fnv1a.asm">
+      <Filter>Source Files</Filter>
+    </NASM>
+  </ItemGroup>
 </Project>
