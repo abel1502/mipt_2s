@@ -74,8 +74,14 @@ static bool genBadTestKeys(unsigned count, Hashtable::key_t *buf) {
 }
 
 
+#ifdef __GNUC__
+#define NOINLINE __attribute__((noinline))
+#else
+#define NOINLINE __declspec(noinline)
+#endif
+
 #define TEST_FUNC_(NAME)                                                                                                                            \
-__declspec(noinline) volatile void test##NAME(const Hashtable *ht, unsigned testCount, unsigned testKeyCount, const Hashtable::key_t *testKeys) {   \
+ NOINLINE void test##NAME(const Hashtable *ht, unsigned testCount, unsigned testKeyCount, const Hashtable::key_t *testKeys) {   \
     printf("Testing " #NAME " keys...\n");                                                                                                          \
                                                                                                                                                     \
     std::chrono::high_resolution_clock clk{};                                                                                                       \

@@ -14,6 +14,8 @@ namespace abel {
 #pragma warning(disable : 26812 /* Suggest class enum over enum */)
 class Hashtable {
 public:
+    #undef R_OK
+
     enum result_e {
         R_OK = 0,
         R_BADMEMORY,

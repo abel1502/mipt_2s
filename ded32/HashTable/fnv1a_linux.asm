@@ -6,17 +6,17 @@ global fnv1a_64_asm
 fnv1a_64_asm:
 %push fnv1a_64
 		
-%define		aData rcx
-%define		aSize rdx
+%define		aData rdi
+%define		aSize rsi
 %define		lHash r8
 		
 		mov lHash, 0CBF29CE484222325h
 		mov r9, 100000001B3h
 		xor rax, rax
-		add rdx, aData
+		add rsi, aData
 		
 ; TODO: Maybe (especially since size is constant) we could operate on bigger chunks of memory?
-.loop:	cmp aData, rdx
+.loop:		cmp aData, rsi
 		jae .end
 		
 		mov al, [aData]
@@ -25,7 +25,7 @@ fnv1a_64_asm:
 		inc aData
 		jmp .loop
 		
-.end:	mov rax, lHash
+.end:		mov rax, lHash
 		ret
 
 %pop fnv1a_64
@@ -37,14 +37,14 @@ crc32_asm:
 %push crc32_asm
 
 		xor rax, rax
-		crc32 rax, qword [rcx]
-		crc32 rax, qword [rcx+8h]
-		crc32 rax, qword [rcx+10h]
-		crc32 rax, qword [rcx+18h]
-		crc32 rax, qword [rcx+20h]
-		crc32 rax, qword [rcx+28h]
-		crc32 rax, qword [rcx+30h]
-		crc32 rax, qword [rcx+38h]
+		crc32 rax, qword [rdi]
+		crc32 rax, qword [rdi+8h]
+		crc32 rax, qword [rdi+10h]
+		crc32 rax, qword [rdi+18h]
+		crc32 rax, qword [rdi+20h]
+		crc32 rax, qword [rdi+28h]
+		crc32 rax, qword [rdi+30h]
+		crc32 rax, qword [rdi+38h]
 		ret
 
 %pop crc32_asm
