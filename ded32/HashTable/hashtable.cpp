@@ -44,7 +44,7 @@ Hashtable::result_e Hashtable::ctor(FileBuf *src) {
         return lastResult;
 
     char *rawBuf = src->getData();
-    char cur = *(rawBuf++);
+    char cur = 0;
 
     while (true) {
         key_t curKey = "";
@@ -66,7 +66,7 @@ Hashtable::result_e Hashtable::ctor(FileBuf *src) {
 
         while (isspace(cur = *(rawBuf++))) {}
 
-        set(curKey, rawBuf - 1);  // TODO: Test
+        set(curKey, rawBuf - 2);
 
         while (cur && cur != '\n') {
             cur = *(rawBuf++);

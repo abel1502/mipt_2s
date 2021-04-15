@@ -223,6 +223,9 @@ int main(int argc, char **argv) {
 
     free(testKeys);
 
+    const Hashtable::key_t TKEY = "блестяще";
+    printf("Hashtable condition: %s\n", ht.get(TKEY));
+
     ht.dtor();
 
     printf("Done.\n\n");
