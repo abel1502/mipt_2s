@@ -2,7 +2,7 @@ CXX = g++
 LD = g++
 NASM = ../../Asm32/Asm32/nasm
 
-C_FLAGS = -O0 -Wall -std=gnu++20 -m64 -masm=intel -fexceptions -march=native -mfpmath=sse -g
+C_FLAGS = -O1 -Wall -std=gnu++20 -m64 -masm=intel -fexceptions -march=native -mfpmath=sse -g
 L_FLAGS = -m64
 A_FLAGS = -f win64
 
