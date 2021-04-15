@@ -113,6 +113,38 @@ void Hashtable::castToKey(const char *src, key_t key) {
     strncpy(key, src, KEY_LEN - 1);
 }
 
+#ifdef __GNUC__
+
+inline bool keycmp_asm(const Hashtable::key_t key1, const Hashtable::key_t key2) {
+    unsigned res1 = false, res2 = false;
+
+    asm(
+        "vmovdqu ymm7, [%[key1]]\n"
+        "vmovdqu ymm8, [%[key2]]\n"
+        "vpcmpeqq ymm7, ymm7, ymm8\n"
+        "vpmovmskb %[res1], ymm7\n"
+        "vmovdqu ymm7, [%[key1]+32]\n"
+        "vmovdqu ymm8, [%[key2]+32]\n"
+        "vpcmpeqq ymm7, ymm7, ymm8\n"
+        "vpmovmskb %[res2], ymm7\n"
+        "not %[res1]\n"
+        "not %[res2]\n"
+        : [res1]"=&r"(res1), [res2]"=r"(res2)
+        : [key1]"r"(key1), [key2]"r"(key2)
+        : "cc", "ymm7", "ymm8"
+    );
+
+    return res1 | res2;
+}
+
+#define KEYCMP(KEY1, KEY2)  keycmp_asm(KEY1, KEY2)
+
+#else
+
+#define KEYCMP(KEY1, KEY2)  memcmp(KEY1, KEY2, KEY_LEN)
+
+#endif // __GNUC__
+
 Hashtable::mvalue_t Hashtable::get(const key_t key) const {
     unsigned curInd = hash(key);
     unsigned endInd = (curInd - 1 + capacity) % capacity;
@@ -120,8 +152,10 @@ Hashtable::mvalue_t Hashtable::get(const key_t key) const {
     assert(curInd < capacity);
 
     for (;; curInd = (curInd + 1) % capacity) {
-        if (buf[curInd].value < NODE_SPECIAL) {
-            if (buf[curInd].value == NODE_FREE) {
+        Node *curNode = &buf[curInd];
+
+        if (curNode->value < NODE_SPECIAL) {
+            if (curNode->value == NODE_FREE) {
                 lastResult = R_NOTFOUND;
                 return nullptr;
             }
@@ -129,9 +163,9 @@ Hashtable::mvalue_t Hashtable::get(const key_t key) const {
             continue;
         }
 
-        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
+        if (KEYCMP(key, curNode->key) == 0) {
             lastResult = R_OK;
-            return const_cast<mvalue_t>(buf[curInd].value);
+            return const_cast<mvalue_t>(curNode->value);
         }
 
         if (curInd == endInd)
@@ -177,18 +211,21 @@ Hashtable::result_e Hashtable::set(const key_t key, value_t value) {
         // [a][c][b][ ][ ][ ][ ]
         // [a][#][b][ ][ ][ ][ ]
         // [a][b][b][ ][ ][ ][ ]
-        if (buf[curInd].value == NODE_DELETED) {
-            deletedSpot = deletedSpot ? deletedSpot : &buf[curInd];
+
+        Node *curNode = &buf[curInd];
+
+        if (curNode->value == NODE_DELETED) {
+            deletedSpot = deletedSpot ? deletedSpot : curNode;
             continue;
-        } else if (buf[curInd].value == NODE_FREE) {
-            memcpy(buf[curInd].key, key, KEY_LEN);
-            buf[curInd].value = value;
+        } else if (curNode->value == NODE_FREE) {
+            memcpy(curNode->key, key, KEY_LEN);
+            curNode->value = value;
 
             return lastResult = R_OK;
         }
 
-        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
-            buf[curInd].value = value;
+        if (KEYCMP(key, curNode->key) == 0) {
+            curNode->value = value;
 
             return lastResult = R_OK;
         }
@@ -216,16 +253,18 @@ Hashtable::result_e Hashtable::del(const key_t key) {
     assert(curInd < capacity);
 
     for (;; curInd = (curInd + 1) % capacity) {
-        if (buf[curInd].value < NODE_SPECIAL) {
-            if (buf[curInd].value == NODE_FREE) {
+        Node *curNode = &buf[curInd];
+
+        if (curNode->value < NODE_SPECIAL) {
+            if (curNode->value == NODE_FREE) {
                 return lastResult = R_OK;  // TODO: R_NOTFOUND?
             }
 
             continue;
         }
 
-        if (memcmp(key, buf[curInd].key, KEY_LEN) == 0) {
-            buf[curInd].value = NODE_DELETED;
+        if (KEYCMP(key, curNode->key) == 0) {
+            curNode->value = NODE_DELETED;
 
             return lastResult = R_OK;
         }
