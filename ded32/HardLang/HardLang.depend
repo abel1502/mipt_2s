@@ -1,0 +1,140 @@
+# depslib dependency file v1.0
+1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\filebuf.cpp
+	"filebuf.h"
+	<cassert>
+	<cctype>
+
+1618826529 d:\workspace\.mipt\s2\ded32\hardlang\\include\\filebuf.h
+	"general.h"
+	<cstdio>
+	<cstdlib>
+	<sys/stat.h>
+
+1618828480 d:\workspace\.mipt\s2\ded32\hardlang\\include\\general.h
+	<new>
+
+1618828489 source:d:\workspace\.mipt\s2\ded32\hardlang\source\general.cpp
+	<cstdio>
+	<cstdarg>
+	<cerrno>
+	"general.h"
+
+1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\lexer.cpp
+	"lexer.h"
+	<cstdlib>
+	<cmath>
+	<cassert>
+	<cctype>
+	<cstring>
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+
+1618850975 d:\workspace\.mipt\s2\ded32\hardlang\\include\\lexer.h
+	"general.h"
+	"filebuf.h"
+	<cstdlib>
+	<cstdio>
+	"tokens.dsl.h"
+	"tokens.dsl.h"
+
+1608203580 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\tokens.dsl.h
+
+1618952484 source:d:\workspace\.mipt\s2\ded32\hardlang\source\hashtable.cpp
+	"hashtable.h"
+	<cstring>
+	<cassert>
+	<algorithm>
+	<cctype>
+
+1618953410 d:\workspace\.mipt\s2\ded32\hardlang\\include\\hashtable.h
+	"general.h"
+	"filebuf.h"
+	"checksum.h"
+	<cstring>
+	<cassert>
+	<algorithm>
+	<cctype>
+
+1618572147 d:\workspace\.mipt\s2\ded32\hardlang\\include\\checksum.h
+	<cstdint>
+	<cassert>
+
+1618512888 source:d:\workspace\.mipt\s2\ded32\hardlang\source\fnv1a.asm
+
+1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
+	<cstdio>
+	<cstdlib>
+	<cassert>
+	<getopt.h>
+	"general.h"
+	"parser.h"
+	"filebuf.h"
+
+1618826529 d:\workspace\.mipt\s2\ded32\hardlang\\include\\parser.h
+	"general.h"
+	"filebuf.h"
+	"lexer.h"
+	"ast.h"
+
+1618991050 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
+	"general.h"
+	"parser.h"
+	"vector.h"
+	"hashtable.h"
+	"vtable.h"
+	<cstdio>
+	<cstdint>
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"stmttypes.dsl.h"
+	"stmttypes.dsl.h"
+	"stmttypes.dsl.h"
+	"stmttypes.dsl.h"
+	"stmttypes.dsl.h"
+
+1619091214 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
+	"general.h"
+	<cstdlib>
+	<cstring>
+	<cassert>
+
+1618848503 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vtable.h
+
+1608462404 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\exprtypes.dsl.h
+
+1608279340 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\stmttypes.dsl.h
+
+1618828538 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
+	"parser.h"
+	<cassert>
+
+1619095179 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+	"ast.h"
+	"exprtypes.dsl.h"
+	"pseudofuncs.dsl.h"
+	"pseudofuncs.dsl.h"
+	"exprtypes.dsl.h"
+	"exprtypes.dsl.h"
+	"stmttypes.dsl.h"
+	"stmttypes.dsl.h"
+
+1608477839 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
+
+1619071188 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+	"object.h"
+
+1619178429 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+	<cstdint>
+	<cstdio>
+	<immintrin.h>
+	"general.h"
+	"vector.h"
+
