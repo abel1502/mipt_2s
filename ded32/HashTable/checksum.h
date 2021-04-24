@@ -114,7 +114,9 @@ crc32_t crc32_update(crc32_t value, const char *data, size_t size) {
     value ^= 0xFFFFFFFF;
 
     for (size_t i = 0; i < size; ++i) {
+        #ifdef _MSC_VER
         #pragma warning(suppress : 6011)
+        #endif
         value = (value << 8) ^ CRC32Table[(value ^ data[i]) & 0xFF];
     }
 

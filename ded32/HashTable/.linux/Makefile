@@ -2,7 +2,8 @@ CXX = g++
 LD = g++
 NASM = nasm
 
-C_FLAGS = -O1 -Wall -std=gnu++20 -m64 -masm=intel -fexceptions -march=native -mfpmath=sse -g
+# -DNO_OPTIMIZE
+C_FLAGS = -O3 -Wall -std=gnu++20 -m64 -masm=intel -fexceptions -march=native -mfpmath=sse -g
 L_FLAGS = -m64
 A_FLAGS = -f elf64
 
@@ -12,8 +13,8 @@ RUN = ./ht -v -t ../dict-en-rus.dic
 .PHONY : all clear re run profile gdb
 
 
-all : filebuf.o general.o hashtable.o main.o fnv1a.obj
-	$(LD) $(L_FLAGS) -o ht filebuf.o general.o hashtable.o main.o fnv1a.obj
+all : filebuf.o general.o hashtable.o main.o fnv1a.o
+	$(LD) $(L_FLAGS) -o ht filebuf.o general.o hashtable.o main.o fnv1a.o
 
 %.o : ../%.cpp
 	$(CXX) $(C_FLAGS) -c $< -o $@
@@ -25,8 +26,8 @@ all : filebuf.o general.o hashtable.o main.o fnv1a.obj
 ../hashtable.h : ../general.h ../filebuf.h ../checksum.h
 ../main.cpp : ../general.h ../filebuf.h ../hashtable.h
 
-fnv1a.obj : ../fnv1a_linux.asm
-	$(NASM) $(A_FLAGS) ../fnv1a_linux.asm -o fnv1a.obj
+fnv1a.o : ../fnv1a_linux.asm
+	$(NASM) $(A_FLAGS) ../fnv1a_linux.asm -o fnv1a.o
 
 clean :
 	rm *.o

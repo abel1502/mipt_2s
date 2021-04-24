@@ -10,8 +10,10 @@
 
 namespace abel {
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 26812 /* Suggest class enum over enum */)
+#endif
 class Hashtable {
 public:
     #undef R_OK
@@ -62,7 +64,7 @@ public:
 
     void dtor();
 
-    void swap(Hashtable &other);
+    void swap(Hashtable &other) noexcept;
 
     Hashtable() = default;
     Hashtable(const Hashtable &other) = delete;
@@ -125,12 +127,18 @@ private:
         //return (0x61C88647ULL * (unsigned long long)crc32_compute(key, KEY_LEN) >> 32) % capacity;  // Exactly the same, indicating it was a problem with crc itself. I guess it shouldn't be used in hashtables
         // return fnv1a_64(key, KEY_LEN) % (unsigned long long)capacity;  // 1.5 per bucket. One. Point. Five. I don't think any intrinsicness of crc32 can compensate for this. (Although I'll still test it)
         // return fnv1a_64_asm(key, KEY_LEN) % (unsigned long long)capacity;
+        #ifdef NO_OPTIMIZE
+        return fnv1a_64(key, KEY_LEN) % (unsigned long long)capacity;
+        #else
         return crc32_asm(key, KEY_LEN) % (unsigned long long)capacity;
+        #endif
 
         // TODO: If I stick to fnv1a_64, I could as well remove the key length limitation due to redundancy. It would probably only speed things up.
     }
 };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 }
 

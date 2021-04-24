@@ -8,6 +8,11 @@
 //#include <intrin.h>
 
 
+#warning "Applying extra optimizations:"
+#warning " - Adding new data structure 'Hashtable'"
+#warning " - Splitting the project into two"
+
+
 namespace abel {
 
 #ifdef __GNUC__
@@ -88,7 +93,7 @@ void Hashtable::dtor() {
     buf = nullptr;
 }
 
-void Hashtable::swap(Hashtable &other) {
+void Hashtable::swap(Hashtable &other) noexcept {
     std::swap(lastResult, other.lastResult);
     std::swap(capacity, other.capacity);
     std::swap(size, other.size);
@@ -118,7 +123,7 @@ void Hashtable::castToKey(const char *src, key_t key) {
 inline bool keycmp_asm(const Hashtable::key_t key1, const Hashtable::key_t key2) {
     unsigned res1 = false, res2 = false;
 
-    asm(
+    asm (
         "vmovdqu ymm7, [%[key1]]\n"
         "vmovdqu ymm8, [%[key2]]\n"
         "vpcmpeqq ymm7, ymm7, ymm8\n"
@@ -137,7 +142,11 @@ inline bool keycmp_asm(const Hashtable::key_t key1, const Hashtable::key_t key2)
     return res1 | res2;
 }
 
+#ifdef NO_OPTIMIZE
+#define KEYCMP(KEY1, KEY2)  memcmp(KEY1, KEY2, KEY_LEN)
+#else
 #define KEYCMP(KEY1, KEY2)  keycmp_asm(KEY1, KEY2)
+#endif
 
 #else
 

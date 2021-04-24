@@ -17,7 +17,7 @@ To define an unmangled alias {RAW} for the mangled names {MANGLED_GCC} (for gcc 
 #include <cstdlib>
 #include <cassert>
 #include <chrono>
-#include <getopt.h>  // Has to beincluded after std headers, breaks them
+#include <getopt.h>  // Has to be included after std headers, breaks them
 
 #define CHECKSUM_NOIMPL
 
@@ -81,19 +81,19 @@ static bool genBadTestKeys(unsigned count, Hashtable::key_t *buf) {
 #endif
 
 #define TEST_FUNC_(NAME)                                                                                                                            \
- NOINLINE void test##NAME(const Hashtable *ht, unsigned testCount, unsigned testKeyCount, const Hashtable::key_t *testKeys) {   \
+ NOINLINE void test##NAME(const Hashtable *ht, unsigned testCount, unsigned testKeyCount, const Hashtable::key_t *testKeys) {                       \
     printf("Testing " #NAME " keys...\n");                                                                                                          \
                                                                                                                                                     \
     std::chrono::high_resolution_clock clk{};                                                                                                       \
     auto tStart = clk.now();                                                                                                                        \
-                                                                                                                                                    \
+    volatile static char *result = nullptr;                                                                                                         \
     while (testCount--) {                                                                                                                           \
-        volatile char *result = ht->get(testKeys[randLL() % testKeyCount]);                                                                         \
+        result = ht->get(testKeys[randLL() % testKeyCount]);                                                                                        \
     }                                                                                                                                               \
                                                                                                                                                     \
     auto tEnd = clk.now();                                                                                                                          \
                                                                                                                                                     \
-    printf("Done, on average %lfms per query\n", (double)(tEnd - tStart).count() / (double)testCount * 1000.);                                                                         \
+    printf("Done, on average %lfms per query\n", (double)(tEnd - tStart).count() / (double)testCount * 1000.);                                      \
 }
 
 TEST_FUNC_(Good)
