@@ -198,6 +198,9 @@ public:
     OperandR    r;
     OperandDisp disp;
     OperandImm  imm;
+
+    bool compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
+                 unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const;
 };
 
 }

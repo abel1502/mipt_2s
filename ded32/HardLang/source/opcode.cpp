@@ -110,75 +110,6 @@ bool Instruction::compile(PackedInstruction &pi) const {
     // TODO: !!!!!!!!!
     TRY_B(pi.ctor());
 
-    #if 0
-
-    case Opcode_e::NAME: {
-        static_assert(RMSIZE == -1 || DISPSIZE == -1);
-
-        uint8_t prefixes[4] = REQPREFIX;
-        TRY_B(pi.setPrefixes(prefixes));
-
-        constexpr unsigned opSize = std::initializer_list<uint8_t>BYTES.size();
-        uint8_t opBytes[3] = BYTES;
-
-        /* TODO: Also handle VEX-es */
-        if ((RMSIZE != -1 && rm.usesRexReg()) ||
-            (RSIZE  != -1 &&  r.usesRexReg()) ||
-            ((RMSIZE == SIZE_Q || RSIZE == SIZE_Q || DISPSIZE == SIZE_Q || IMMSIZE == SIZE_Q))) {
-            /* TODO: Also check that the default operand size isn't 64 for this operation */
-
-            pi.flags.setType(pi.T_REX); /* TODO: Encapsulate!! */
-            pi.rex.magic = 0b0100;
-            /* TODO: Encapsulate */
-            pi.rex.W = RMSIZE == SIZE_Q || RSIZE == SIZE_Q || DISPSIZE == SIZE_Q || IMMSIZE == SIZE_Q;
-
-            TRY_B(pi.setRexOp(opBytes, opSize));
-        } else {
-            pi.flags.setType(pi.T_PLAIN);\
-            TRY_B(pi.setRawOp(opBytes, opSize));
-        }
-
-        if constexpr (RMSIZE != -1) {
-            bool hasSib = false;
-            TRY_B(rm.writeModRm(pi.modrm, pi.sib, hasSib));
-
-            pi.flags.setHasModrm(true);
-            pi.flags.setHasSib(hasSib);
-
-            if (pi.flags.getType() == pi.T_REX) {
-                TRY_B(rm.writeRex(pi.rex));
-            }
-        }
-
-        if constexpr (RSIZE != -1) {
-            TRY_B(r.writeModRm(pi.modrm));
-
-            pi.flags.setHasModrm(true);
-
-            if (pi.flags.getType() == pi.T_REX) {
-                TRY_B(rm.writeRex(pi.rex));
-            }
-
-            if constexpr (RMSIZE == -1) {
-                ERR("Embedded register operands not yet implemented, sorry");
-                return true;
-            }
-        }
-
-        if constexpr (DISPSIZE != -1) {    /* TODO: Also handle displacement for sib! */
-            pi.setDispSize(1 << DISPSIZE);
-            pi.displacement = disp.val_qu;
-        }
-
-        if constexpr (IMMSIZE != -1) {
-            pi.setImmSize(1 << IMMSIZE);
-            pi.immediate = imm.val_qu;
-        }
-
-    } break;
-
-    #endif // 0
-
     switch (op) {
         #include "opcodes.dslctx.h"
 
@@ -187,66 +118,11 @@ bool Instruction::compile(PackedInstruction &pi) const {
                 static_assert(RMSIZE == -1 || DISPSIZE == -1);                                                  \
                                                                                                                 \
                 uint8_t prefixes[4] = REQPREFIX;                                                                \
-                TRY_B(pi.setPrefixes(prefixes));                                                                \
                                                                                                                 \
                 constexpr unsigned opSize = std::initializer_list<uint8_t>BYTES.size();                         \
                 uint8_t opBytes[3] = BYTES;                                                                     \
                                                                                                                 \
-                /* TODO: Also handle VEX-es */                                                                  \
-                if ((RMSIZE != -1 && rm.usesRexReg()) ||                                                        \
-                    (RSIZE  != -1 &&  r.usesRexReg()) ||                                                        \
-                    ((RMSIZE == SIZE_Q || RSIZE == SIZE_Q || DISPSIZE == SIZE_Q || IMMSIZE == SIZE_Q))) {       \
-                    /* TODO: Also check that the default operand size isn't 64 for this operation */            \
-                                                                                                                \
-                    pi.flags.setType(pi.T_REX); /* TODO: Encapsulate!!! */                                      \
-                    pi.rex.magic = 0b0100;                                                                      \
-                    /* TODO: Encapsulate */                                                                     \
-                    pi.rex.W = RMSIZE == SIZE_Q || RSIZE == SIZE_Q || DISPSIZE == SIZE_Q || IMMSIZE == SIZE_Q;  \
-                                                                                                                \
-                    TRY_B(pi.setRexOp(opBytes, opSize));                                                        \
-                } else {                                                                                        \
-                    pi.flags.setType(pi.T_PLAIN);                                                               \
-                                                                                                                \
-                    TRY_B(pi.setRawOp(opBytes, opSize));                                                        \
-                }                                                                                               \
-                                                                                                                \
-                if constexpr (RMSIZE != -1) {                                                                   \
-                    bool hasSib = false;                                                                        \
-                    TRY_B(rm.writeModRm(pi.modrm, pi.sib, hasSib));                                             \
-                                                                                                                \
-                    pi.flags.setHasSib(hasSib);                                                                 \
-                    pi.flags.setHasModrm(true);                                                                 \
-                                                                                                                \
-                    if (pi.flags.getType() == pi.T_REX) {                                                       \
-                        TRY_B(rm.writeRex(pi.rex));                                                             \
-                    }                                                                                           \
-                }                                                                                               \
-                                                                                                                \
-                if constexpr (RSIZE != -1) {                                                                    \
-                    TRY_B(r.writeModRm(pi.modrm));                                                              \
-                                                                                                                \
-                    pi.flags.setHasModrm(true);                                                                 \
-                                                                                                                \
-                    if (pi.flags.getType() == pi.T_REX) {                                                       \
-                        TRY_B(rm.writeRex(pi.rex));                                                             \
-                    }                                                                                           \
-                                                                                                                \
-                    if constexpr (RMSIZE == -1) {                                                               \
-                        ERR("Embedded register operands not yet implemented, sorry");                           \
-                        return true;                                                                            \
-                    }                                                                                           \
-                }                                                                                               \
-                                                                                                                \
-                if constexpr (DISPSIZE != -1) {                                                                 \
-                    pi.flags.setDispSize(1 << DISPSIZE);                                                        \
-                    pi.displacement = disp.val_qu;                                                              \
-                }                                                                                               \
-                                                                                                                \
-                if constexpr (IMMSIZE != -1) {                                                                  \
-                    pi.flags.setImmSize(1 << IMMSIZE);                                                          \
-                    pi.immediate = imm.val_qu;                                                                  \
-                }                                                                                               \
-                                                                                                                \
+                TRY_B(compile(pi, RMSIZE, RSIZE, DISPSIZE, IMMSIZE, VARIANT, prefixes, opSize, opBytes));       \
             } break;
 
         #include "opcodes.dsl.h"
@@ -256,6 +132,72 @@ bool Instruction::compile(PackedInstruction &pi) const {
     default:
         ERR("Unknown opcode.");
         abort();
+    }
+
+    return false;
+}
+
+// ded32 HardLang
+
+bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
+                          unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const {
+
+    TRY_B(pi.setPrefixes(prefixes));
+
+    // TODO: Also handle VEX-es
+    if ((rmsize != -1u && rm.usesRexReg()) ||
+        (rsize  != -1u &&  r.usesRexReg()) ||
+        ((rmsize == SIZE_Q || rsize == SIZE_Q || dispsize == SIZE_Q || immsize == SIZE_Q))) {
+        // TODO: Also check that the default operand size isn't 64 for this operation
+
+        pi.flags.setType(pi.T_REX); // TODO: Encapsulate!!
+        pi.rex.magic = 0b0100;
+        // TODO: Encapsulate
+        pi.rex.W = rmsize == SIZE_Q || rsize == SIZE_Q || dispsize == SIZE_Q || immsize == SIZE_Q;
+
+        TRY_B(pi.setRexOp(opBytes, opSize));
+    } else {
+        pi.flags.setType(pi.T_PLAIN);
+        TRY_B(pi.setRawOp(opBytes, opSize));
+    }
+
+    if (rmsize != -1u) {
+        bool hasSib = false;
+        TRY_B(rm.writeModRm(pi.modrm, pi.sib, hasSib));
+
+        pi.flags.setHasModrm(true);
+        pi.flags.setHasSib(hasSib);
+
+        if (pi.flags.getType() == pi.T_REX) {
+            TRY_B(rm.writeRex(pi.rex));
+        }
+    }
+
+    if (rsize != -1u) {
+        if (!pi.flags.hasModrm()) {
+            ERR("Embedded register operands not yet implemented, sorry");
+            return true;
+        }
+
+        TRY_B(r.writeModRm(pi.modrm));
+
+        if (pi.flags.getType() == pi.T_REX) {
+            TRY_B(rm.writeRex(pi.rex));
+        }
+    } else if (variant != -1u) {
+        pi.flags.setHasModrm(true);
+
+        pi.modrm.reg = variant;
+    }
+
+    if (dispsize != -1u) {  // TODO: Also handle displacement for sib!
+        pi.flags.setDispSize(1 << dispsize);
+        pi.displacement = disp.val_qu;
+    }
+
+    if (immsize != -1u) {
+        pi.flags.setImmSize(1 << immsize);
+        pi.immediate = imm.val_qu;
     }
 
     return false;
