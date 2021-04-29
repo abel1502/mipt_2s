@@ -187,14 +187,14 @@ VarInfo Scope::getInfo(const Var *var) const {
 VarInfo Scope::getInfo(const Token *name) const {
     const Scope *cur = this;
 
-    while (cur && !cur->vars.has(name->getStr())) {
+    while (cur && !cur->vars.has(name->getStr(), name->getLength())) {
         cur = cur->parent;
     }
 
     if (!cur)
         return {(uint32_t)-1, nullptr};
 
-    return cur->vars.get(name->getStr());
+    return cur->vars.get(name->getStr(), name->getLength());
 }
 
 bool Scope::hasVar(const Var *var) const {
@@ -204,7 +204,7 @@ bool Scope::hasVar(const Var *var) const {
 bool Scope::hasVar(const Token *name) const {
     const Scope *cur = this;
 
-    while (cur && !cur->vars.has(name->getStr())) {
+    while (cur && !cur->vars.has(name->getStr(), name->getLength())) {
         cur = cur->parent;
     }
 
@@ -212,7 +212,7 @@ bool Scope::hasVar(const Token *name) const {
 }
 
 bool Scope::addVar(const Var *var) {
-    if (vars.has(var->getName()->getStr())) {
+    if (vars.has(var->getName()->getStr(), var->getName()->getLength())) {
         ERR("Redeclaration of variable \"%.*s\" within the same scope", var->getName()->getLength(), var->getName()->getStr());
 
         return true;
@@ -222,7 +222,7 @@ bool Scope::addVar(const Var *var) {
 
     curOffset += var->getType().getSize();
 
-    TRY_B(vars.set(var->getName()->getStr(), {offset, var}));
+    TRY_B(vars.set(var->getName()->getStr(), var->getName()->getLength(), {offset, var}));
 
     return false;
 }
@@ -249,8 +249,11 @@ uint32_t Scope::getFrameSize() const {
 //================================================================================
 
 bool Expression::ctor() {
-    children.ctor();
+    VINIT();
+
+    TRY_B(children.ctor());
     typeMask = TypeSpec::AllMask;
+
     // TODO: zero-fill?
     return false;
 }
@@ -1296,36 +1299,46 @@ bool Statement::ctor() {
 
 bool Statement::ctorCompound() {
     VSETTYPE(this, Compound);
+    TRY_B(code.ctor());
 
     return false;
 }
 
 bool Statement::ctorReturn() {
     VSETTYPE(this, Return);
+    TRY_B(expr.ctor());
 
     return false;
 }
 
 bool Statement::ctorLoop() {
     VSETTYPE(this, Loop);
+    TRY_B(expr.ctor());
+    TRY_B(code.ctor());
 
     return false;
 }
 
 bool Statement::ctorCond() {
     VSETTYPE(this, Cond);
+    TRY_B(expr.ctor());
+    TRY_B(code.ctor());
+    TRY_B(altCode.ctor());
 
     return false;
 }
 
 bool Statement::ctorVarDecl() {
     VSETTYPE(this, VarDecl);
+    TRY_B(var.ctor());
+    TRY_B(expr.ctor());
 
     return false;
 }
 
 bool Statement::ctorExpr() {
     VSETTYPE(this, Expr);
+    TRY_B(expr.ctor());
 
     return false;
 }

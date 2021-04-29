@@ -75,6 +75,10 @@ public:
             return lastResult = R_BADMEMORY;
         }
 
+        for (unsigned i = 0; i < capacity; ++i) {
+            buf[i].type = NODE_FREE;
+        }
+
         return lastResult = R_OK;
     }
 
@@ -180,6 +184,15 @@ public:
         assert(strlen(key) < KEY_LEN);
     }
 
+    static void castToKey(const char *src, key_t key, unsigned len){
+        assert(len < KEY_LEN);
+
+        memset(key, 0, KEY_LEN);
+        strncpy(key, src, len);
+
+        assert(strlen(key) < KEY_LEN);
+    }
+
     #ifdef __GNUC__
 
     static inline bool keycmp_asm(const key_t key1, const key_t key2) {
@@ -218,183 +231,102 @@ public:
 
     //--------------------------------------------------------------------------------
 
-    result_e has(const char *key) const {
-        T result{};
+    bool has(const char *key, unsigned len) const {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
 
-        return get_(key, &result);
+        return has_(paddedKey);
+    }
+
+    result_e set(const char *key, unsigned len, const T &value) {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return set_(paddedKey, value);
+    }
+
+    result_e get(const char *key, unsigned len, T *value) const {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return get_(paddedKey, value);
+    }
+
+    T get(const char *key, unsigned len) const {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return get_(paddedKey);
+    }
+
+    result_e del(const char *key, unsigned len) {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return del_(paddedKey);
+    }
+
+    result_e pop(const char *key, unsigned len, T *value) {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return pop_(paddedKey, value);
+    }
+
+    T pop(const char *key, unsigned len) {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey, len);
+
+        return pop_(paddedKey);
+    }
+
+    bool has(const char *key) const {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
+
+        return has_(paddedKey);
     }
 
     result_e set(const char *key, const T &value) {
-        // TODO: resize if necessary
-        if (size << 8 >= capacity * CRITICAL_LOAD_FACTOR) {  // TODO: Maybe swap for size << 1 >= capacity
-            resize(capacity * RESIZE_FACTOR);
-        }
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        unsigned curInd = hash(key);
-        unsigned endInd = (curInd - 1 + capacity) % capacity;
-
-        Node *deletedSpot = nullptr;
-
-        assert(curInd < capacity);
-
-        for (;; curInd = (curInd + 1) % capacity) {
-            // TODO: Assigning to deleted nodes may be wrong... ?
-            // hash(a) == hash(b) == 0
-            // hash(c) == 1
-            // [ ][ ][ ][ ][ ][ ][ ]
-            // [a][ ][ ][ ][ ][ ][ ]
-            // [a][c][ ][ ][ ][ ][ ]
-            // [a][c][b][ ][ ][ ][ ]
-            // [a][#][b][ ][ ][ ][ ]
-            // [a][b][b][ ][ ][ ][ ]
-
-            Node *curNode = &buf[curInd];
-
-            switch (curNode->type) {
-            case NODE_FULL:
-                break;
-
-            case NODE_FREE:
-                memcpy(curNode->key, key, KEY_LEN);
-                curNode->value = value;
-
-                return lastResult = R_OK;
-
-            case NODE_DELETED:
-                deletedSpot = deletedSpot ? deletedSpot : curNode;
-                continue;
-
-            default:
-                ERR("Shouldn't be reachable");
-                abort();
-            }
-
-            if (KEYCMP(key, curNode->key) == 0) {
-                curNode->value = value;
-
-                return lastResult = R_OK;
-            }
-
-            if (curInd == endInd)
-                break;
-        }
-
-        if (deletedSpot) {
-            memcpy(deletedSpot->key, key, KEY_LEN);
-            deletedSpot->value = value;
-
-            return lastResult = R_OK;
-        }
-
-        // TODO: Shouldn't be reachable
-
-        return lastResult = R_BADSIZE;
+        return set_(paddedKey, value);
     }
 
-    result_e get(const char *key, T *value) const{
-        T result = get_(key);
+    result_e get(const char *key, T *value) const {
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        if (lastResult) {
-            assert(!result);
-            return lastResult;
-        }
-
-        *value = result;
-        return lastResult = R_OK;
+        return get_(paddedKey, value);
     }
 
     T get(const char *key) const {
-        unsigned curInd = hash(key);
-        unsigned endInd = (curInd - 1 + capacity) % capacity;
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        assert(curInd < capacity);
-
-        for (;; curInd = (curInd + 1) % capacity) {
-            Node *curNode = &buf[curInd];
-
-            switch (curNode->type) {
-            case NODE_FULL:
-                break;
-
-            case NODE_FREE:
-                lastResult = R_NOTFOUND;
-                return {};
-
-            case NODE_DELETED:
-                continue;
-
-            default:
-                ERR("Shouldn't be reachable");
-                abort();
-            }
-
-            if (KEYCMP(key, curNode->key) == 0) {
-                lastResult = R_OK;
-                return curNode->value;
-            }
-
-            if (curInd == endInd)
-                break;
-        }
-
-        lastResult = R_NOTFOUND;
-        return {};
+        return get_(paddedKey);
     }
 
     result_e del(const char *key) {
-        unsigned curInd = hash(key);
-        unsigned endInd = (curInd - 1 + capacity) % capacity;
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        assert(curInd < capacity);
-
-        for (;; curInd = (curInd + 1) % capacity) {
-            Node *curNode = &buf[curInd];
-
-            switch (curNode->type) {
-            case NODE_FULL:
-                break;
-
-            case NODE_FREE:
-                return lastResult = R_OK;  // TODO: R_NOTFOUND?
-
-            case NODE_DELETED:
-                continue;
-
-            default:
-                ERR("Shouldn't be reachable");
-                abort();
-            }
-
-            if (KEYCMP(key, curNode->key) == 0) {
-                curNode->value = NODE_DELETED;
-
-                return lastResult = R_OK;
-            }
-
-            if (curInd == endInd)
-                break;
-        }
-
-        return lastResult = R_OK;  // TODO: Same as above
+        return del_(paddedKey);
     }
 
     result_e pop(const char *key, T *value) {
-        if (get_(key, value))
-            return lastResult;
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        return del_(key);
+        return pop_(paddedKey, value);
     }
 
     T pop(const char *key) {
-        T result = get_(key);
-        if (lastResult)
-            return nullptr;
+        key_t paddedKey = "";
+        castToKey(key, paddedKey);
 
-        del_(key);
-        if (lastResult)
-            return nullptr;
-
-        return result;
+        return pop_(paddedKey);
     }
 
     //--------------------------------------------------------------------------------
@@ -442,10 +374,10 @@ public:
             return;
         }
 
-        /*DUMP_("Hashtable (status: %u)\n"
+        DUMP_("Hashtable (status: %u)\n"
               "capacity: %u\n"
               "size: %u\n"
-              "deleted: %u\n", lastResult, capacity, size, deleted);*/
+              "deleted: %u\n", lastResult, capacity, size, deleted);
 
         unsigned freeStart = 0;
         bool isFree = false;
@@ -461,19 +393,18 @@ public:
             }
 
             if (isFree) {
-                /*if (i == freeStart + 1)
+                if (i == freeStart + 1)
                     DUMP_("%u: FREE\n", freeStart);
                 else
-                    DUMP_("%u-%u: FREE\n", freeStart, i - 1);*/
+                    DUMP_("%u-%u: FREE\n", freeStart, i - 1);
 
                 isFree = false;
             }
 
             if (buf[i].type == NODE_DELETED) {
-                //DUMP_("%u: DELETED (%u)\n", i, hash(buf[i].key));
+                DUMP_("%u: DELETED (%u)\n", i, hash(buf[i].key));
             } else {
-                //DUMP_("%u: \"%s\" (%u) -> \"%s\"\n", i, buf[i].key, hash(buf[i].key), buf[i].value);
-                DUMP_("%u\n", hash(buf[i].key));
+                DUMP_("%u: \"%s\" (%u) -> \"%p\"\n", i, buf[i].key, hash(buf[i].key), buf[i].value);
             }
         }
 
@@ -511,53 +442,186 @@ private:
 
     //--------------------------------------------------------------------------------
 
-    result_e has_(const key_t key) const {
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+    bool has_(const key_t key) const {
+        T result{};
 
-        return has(paddedKey);
+        return get_(key, &result) == R_OK;
     }
 
     result_e set_(const key_t key, const T &value) {
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+        // TODO: resize if necessary
+        if (size << 8 >= capacity * CRITICAL_LOAD_FACTOR) {  // TODO: Maybe swap for size << 1 >= capacity
+            resize(capacity * RESIZE_FACTOR);
+        }
 
-        return set_(paddedKey, value);
+        unsigned curInd = hash(key);
+        unsigned endInd = (curInd - 1 + capacity) % capacity;
+
+        Node *deletedSpot = nullptr;
+
+        assert(curInd < capacity);
+
+        for (;; curInd = (curInd + 1) % capacity) {
+            // TODO: Assigning to deleted nodes may be wrong... ?
+            // hash(a) == hash(b) == 0
+            // hash(c) == 1
+            // [ ][ ][ ][ ][ ][ ][ ]
+            // [a][ ][ ][ ][ ][ ][ ]
+            // [a][c][ ][ ][ ][ ][ ]
+            // [a][c][b][ ][ ][ ][ ]
+            // [a][#][b][ ][ ][ ][ ]
+            // [a][b][b][ ][ ][ ][ ]
+
+            Node *curNode = &buf[curInd];
+
+            switch (curNode->type) {
+            case NODE_FULL:
+                break;
+
+            case NODE_FREE:
+                memcpy(curNode->key, key, KEY_LEN);
+                curNode->value = value;
+                curNode->type = NODE_FULL;
+
+                return lastResult = R_OK;
+
+            case NODE_DELETED:
+                deletedSpot = deletedSpot ? deletedSpot : curNode;
+                continue;
+
+            default:
+                ERR("Shouldn't be reachable");
+                abort();
+            }
+
+            if (KEYCMP(key, curNode->key) == 0) {
+                curNode->value = value;
+                curNode->type = NODE_FULL;
+
+                return lastResult = R_OK;
+            }
+
+            if (curInd == endInd)
+                break;
+        }
+
+        if (deletedSpot) {
+            memcpy(deletedSpot->key, key, KEY_LEN);
+            deletedSpot->value = value;
+            deletedSpot->type = NODE_FULL;
+
+            return lastResult = R_OK;
+        }
+
+        // TODO: Shouldn't be reachable
+
+        return lastResult = R_BADSIZE;
     }
 
     result_e get_(const key_t key, T *value) const {
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+        T result = get_(key);
 
-        return get_(paddedKey, value);
+        if (lastResult) {
+            return lastResult;
+        }
+
+        *value = result;
+        return lastResult = R_OK;
     }
 
     T get_(const key_t key) const {
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+        unsigned curInd = hash(key);
+        unsigned endInd = (curInd - 1 + capacity) % capacity;
 
-        return get_(paddedKey);
+        assert(curInd < capacity);
+
+        for (;; curInd = (curInd + 1) % capacity) {
+            Node *curNode = &buf[curInd];
+
+            switch (curNode->type) {
+            case NODE_FULL:
+                break;
+
+            case NODE_FREE:
+                lastResult = R_NOTFOUND;
+                return {};
+
+            case NODE_DELETED:
+                continue;
+
+            default:
+                ERR("Shouldn't be reachable");
+                abort();
+            }
+
+            if (KEYCMP(key, curNode->key) == 0) {
+                lastResult = R_OK;
+                return curNode->value;
+            }
+
+            if (curInd == endInd)
+                break;
+        }
+
+        lastResult = R_NOTFOUND;
+        return {};
     }
 
     result_e del_(const key_t key) {
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+        unsigned curInd = hash(key);
+        unsigned endInd = (curInd - 1 + capacity) % capacity;
 
-        return del_(paddedKey);
+        assert(curInd < capacity);
+
+        for (;; curInd = (curInd + 1) % capacity) {
+            Node *curNode = &buf[curInd];
+
+            switch (curNode->type) {
+            case NODE_FULL:
+                break;
+
+            case NODE_FREE:
+                return lastResult = R_OK;  // TODO: R_NOTFOUND?
+
+            case NODE_DELETED:
+                continue;
+
+            default:
+                ERR("Shouldn't be reachable");
+                abort();
+            }
+
+            if (KEYCMP(key, curNode->key) == 0) {
+                curNode->value = nullptr;
+                curNode->type = NODE_DELETED;
+
+                return lastResult = R_OK;
+            }
+
+            if (curInd == endInd)
+                break;
+        }
+
+        return lastResult = R_OK;  // TODO: Same as above
     }
 
-    result_e pop_(const key_t key, T *value){
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+    result_e pop_(const key_t key, T *value) {
+        if (get_(key, value))
+            return lastResult;
 
-        return pop_(paddedKey, value);
+        return del_(key);
     }
 
-    T pop_(const key_t key){
-        key_t paddedKey = "";
-        castToKey(key, paddedKey);
+    T pop_(const key_t key) {
+        T result = get_(key);
+        if (lastResult)
+            return nullptr;
 
-        return pop_(paddedKey);
+        del_(key);
+        if (lastResult)
+            return nullptr;
+
+        return result;
     }
 };
 

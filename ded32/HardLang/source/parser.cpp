@@ -67,6 +67,7 @@ inline void Parser::restore(unsigned saved) {
 // TODO: Maybe goto error_sys?
 #define P_TRYSYS(STMT) {                \
     if (STMT) {                         \
+        ERR("System parser error");     \
         return ERR_PARSER_SYS;          \
     }                                   \
 }

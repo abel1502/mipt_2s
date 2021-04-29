@@ -41,6 +41,9 @@
 // Virtual isinstance check
 #define VISINSTI(INSTANCE, TYPENAME)                (&(INSTANCE).VTYPE(TYPENAME)) == (INSTANCE).vtable_)
 
+// Virtual initialize
+#define VINIT()                                     vtable_ = nullptr
+
 /*
   Fast virtual method definition case (a switch-based dispatch instead of a table)
 
