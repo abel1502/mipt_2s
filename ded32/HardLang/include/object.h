@@ -7,85 +7,87 @@
 
 #include "general.h"
 #include "vector.h"
+#include "opcode.h"
 
 
 namespace abel {
 
+class Instruction;
 
-struct Instruction {
-    #pragma pack(1)
+#pragma pack(1)
 
-    union modrm_t {
-        uint8_t full : 8;
+// Had to remove that from the class because C++ can't handle forward declarations of nested classes properly
+union modrm_t {
+    uint8_t full : 8;
 
-        struct {
-            uint8_t rm  : 3;
-            uint8_t reg : 3;
-            uint8_t mod : 2;
-        };
+    struct {
+        uint8_t rm  : 3;
+        uint8_t reg : 3;
+        uint8_t mod : 2;
     };
+};
 
-    union sib_t {
-        uint8_t full : 8;
+union sib_t {
+    uint8_t full : 8;
 
-        struct {
-            uint8_t base  : 3;
-            uint8_t index : 3;
-            uint8_t scale : 2;
-        };
+    struct {
+        uint8_t base  : 3;
+        uint8_t index : 3;
+        uint8_t scale : 2;
     };
+};
 
-    union rex_t {
-        uint32_t full : 32;
+union rex_t {
+    uint8_t rex;
+    uint32_t full : 32;
 
+    struct {
         struct {
-            uint8_t op3   : 8;
-            uint8_t op2   : 8;
-            uint8_t op1   : 8;
-
             uint8_t B     : 1;
             uint8_t X     : 1;
             uint8_t R     : 1;
             uint8_t W     : 1;
             uint8_t magic : 4;
         };
+
+        uint8_t op[3];
     };
+};
 
-    union vex2_t {
-        uint32_t full : 24;
+union vex2_t {
+    uint32_t full : 24;
 
-        struct {
-            uint8_t op   : 8;
+    struct {
+        uint8_t op    : 8;
 
-            uint8_t pp    : 2;
-            uint8_t L     : 1;
-            uint8_t vvvv  : 4;
-            uint8_t R     : 1;
-        };
+        uint8_t pp    : 2;
+        uint8_t L     : 1;
+        uint8_t vvvv  : 4;
+        uint8_t R     : 1;
     };
+};
 
-    union vex3_t {
-        uint32_t full : 32;
+union vex3_t {
+    uint32_t full : 32;
 
-        struct {
-            uint8_t op : 8;
+    struct {
+        uint8_t op : 8;
 
-            uint8_t pp    : 2;
-            uint8_t L     : 1;
-            uint8_t vvvv  : 4;
-            uint8_t W     : 1;
+        uint8_t pp    : 2;
+        uint8_t L     : 1;
+        uint8_t vvvv  : 4;
+        uint8_t W     : 1;
 
-            uint8_t mmmmm : 5;
-            uint8_t B     : 1;
-            uint8_t X     : 1;
-            uint8_t R     : 1;
-        };
+        uint8_t mmmmm : 5;
+        uint8_t B     : 1;
+        uint8_t X     : 1;
+        uint8_t R     : 1;
     };
+};
 
-    #pragma pack()
+#pragma pack()
 
-    //--------------------------------------------------------------------------------
-
+struct PackedInstruction {
     enum type_e {
         T_PLAIN = 0,
         T_REX   = 1,
@@ -93,41 +95,16 @@ struct Instruction {
         T_VEX3  = 3,
     };
 
-    enum reg_e {
-        REG_A,
-        REG_C,
-        REG_D,
-        REG_B,
-        REG_SP,
-        REG_BP,
-        REG_SI,
-        REG_DI,
-        REG_8,
-        REG_9,
-        REG_10,
-        REG_11,
-        REG_12,
-        REG_13,
-        REG_14,
-        REG_15,
-    };
-
-    enum regSize_e {
-        REGSIZE_B,
-        REGSIZE_W,
-        REGSIZE_D,
-        REGSIZE_Q,
-        REGSIZE_
-    };
-
     struct {
         unsigned prefCnt    : 3;  /// 0, 1, 2, 3, 4 (Prefix count)
         type_e   type       : 2;  /// Plain, REX, VEX2, VEX3
         unsigned opcodeSize : 2;  /// 1, 2, 3 (Opcode size for REX)
-        bool     displ      : 1;  /// (Is displacement present?)
-        unsigned displSize  : 2;  /// 1, 2, 4, 8 (If displacement is present, its size)
+        bool     disp       : 1;  /// (Is displacement present?)
+        unsigned dispSize   : 2;  /// 1, 2, 4, 8 (If displacement is present, its size)
         bool     imm        : 1;  /// (Is immediate present?)
         unsigned immSize    : 2;  /// 1, 2, 4, 8 (If immediate is present, its size)
+        bool     modrm      : 1;  /// (Is modrm byte present?)
+        bool     sib        : 1;  /// (Is sib byte present?)
 
         inline unsigned getPrefCnt() const {
             assert(prefCnt <= 4);
@@ -140,17 +117,17 @@ struct Instruction {
         }
 
         inline unsigned getOpcodeSize() const {
-            assert(opSize);
+            assert(opcodeSize);
 
-            return getType() <= T_REX ? opSize : 1;
+            return getType() <= T_REX ? opcodeSize : 1;
         }
 
-        inline bool hasDispl() const {
-            return displ;
+        inline bool hasDisp() const {
+            return disp;
         }
 
-        inline unsigned getDisplSize() const {
-            return hasDispl() ? 0 : 1 << displSize;
+        inline unsigned getDispSize() const {
+            return hasDisp() ? 1 << dispSize : 0;
         }
 
         inline bool hasImm() const {
@@ -158,7 +135,17 @@ struct Instruction {
         }
 
         inline unsigned getImmSize() const {
-            return hasImm() ? 0 : immSize;
+            return hasImm() ? immSize : 0;
+        }
+
+        inline bool hasModrm() const {
+            return modrm;
+        }
+
+        inline bool hasSib() const {
+            assert(modrm || !sib);
+
+            return sib;
         }
 
         inline void setPrefCnt(unsigned new_prefCnt) {
@@ -171,18 +158,18 @@ struct Instruction {
             type = new_type;
         }
 
-        inline void setOpcodeSize(unsigned new_opSize) {
+        inline void setOpcodeSize(unsigned new_opcodeSize) {
             assert(getType() <= T_REX);
-            assert(new_opSize);
+            assert(new_opcodeSize);
 
-            opSize = new_opSize;
+            opcodeSize = new_opcodeSize;
         }
 
-        inline void setDisplSize(unsigned new_displSize) {
-            assert((new_displSize & (new_displSize - 1)) == 0);
+        inline void setDispSize(unsigned new_dispSize) {
+            assert((new_dispSize & (new_dispSize - 1)) == 0);
 
-            displ = new_displSize == 0;
-            displSize = _tzcnt_u32(new_displSize);
+            disp = new_dispSize == 0;
+            dispSize = _tzcnt_u32(new_dispSize);
         }
 
         inline void setImmSize(unsigned new_immSize) {
@@ -191,6 +178,16 @@ struct Instruction {
             imm = new_immSize == 0;
             immSize = _tzcnt_u32(new_immSize);
         }
+
+        inline void setHasModrm(bool hasModrm) {
+            modrm = hasModrm;
+        }
+
+        inline void setHasSib(bool hasSib) {
+            assert(modrm || !hasSib);
+
+            sib = hasSib;
+        }
     } flags;
 
     //--------------------------------------------------------------------------------
@@ -198,9 +195,10 @@ struct Instruction {
     uint8_t prefixes[4];
 
     union {
-        rex_t  rex;
-        vex2_t vex2;
-        vex3_t vex3;
+        uint8_t rawOp[3];
+        rex_t   rex;
+        vex2_t  vex2;
+        vex3_t  vex3;
     };
 
     modrm_t modrm;
@@ -211,19 +209,22 @@ struct Instruction {
 
     //--------------------------------------------------------------------------------
 
-    inline void setModrmRm()
+    //inline void setModrmRm();
+
+    bool setPrefixes(const uint8_t new_prefixes[4]);  // The unused ones have to be null
+
+    bool setRawOp(const uint8_t new_op[3], unsigned opcodeSize);
+
+    bool setRexOp(const uint8_t new_op[3], unsigned opcodeSize);
 
     //--------------------------------------------------------------------------------
 
-    FACTORIES(Instruction)
+    FACTORIES(PackedInstruction)
 
     bool ctor();
-    bool dtor();
+    void dtor();
 
-    bool ctorPlain();
-    bool ctorRex();
-    bool ctorVex2();
-    bool ctorVex3();
+    void hexDump() const;
 
 };
 
@@ -255,7 +256,6 @@ private:
     Vector<Instruction> code;
 
 };
-
 
 }
 

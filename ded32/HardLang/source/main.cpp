@@ -1,3 +1,5 @@
+#define TEST
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -7,6 +9,11 @@
 #include "parser.h"
 #include "filebuf.h"
 
+#ifdef TEST
+#include "opcode.h"
+#include "object.h"
+#endif // TEST
+
 
 using namespace abel;
 
@@ -15,11 +22,12 @@ static void showBanner() {
     printf("#####################################\n"
            "#                                   #\n"
            "#    Abel Source Format Compiler    #\n"
-           "#          (c) Abel, 2020           #\n"
+           "#           x86-64 edition          #\n"
+           "#          (c) Abel, 2021           #\n"
            "#                                   #\n"
            "#####################################\n"
            "\n"
-           "This program assembles an .asf file into an .aaf file.\n\n");
+           "This program assembles an .asf file into a Windows x64 object file, ready to be used with any linker.\n\n");
 }
 
 static void showHelp(const char *binName) {
@@ -32,8 +40,20 @@ static void showHelp(const char *binName) {
            "\n", binName);
 }
 
+#ifdef TEST
+void test();
+#endif // TEST
+
 
 int main(int argc, char **argv) {
+    #ifdef TEST
+
+    test();
+    return 0;
+
+    #endif // TEST
+
+
     FileBuf ibuf{};
     FILE *ofile = nullptr;
     Parser parser{};
@@ -147,8 +167,8 @@ int main(int argc, char **argv) {
                 "(If there aren't any more precise error messages above,\n"
                 " this might be due to a system error. In that case you\n"
                 " should try to rerun the program, check that the output\n"
-                "file is writable and if that doesn't help, report the\n"
-                "problem at github.com/abel1502/mipt_1s .");
+                " file is writable and if that doesn't help, report the\n"
+                " problem at github.com/abel1502/mipt_1s )");
 
             return 3;
         }
@@ -161,4 +181,35 @@ int main(int argc, char **argv) {
     return 0;
 
     #undef CLEANUP_
+}
+
+
+void test() {
+    Instruction instr{};
+
+    REQUIRE(!instr.ctor());
+
+    instr.op = Opcode_e::mov_rm64_r64;
+
+    instr.rm.mode.mode = Instruction::mode_t::MODE_MEM_REG;
+    instr.rm.mode.sib = 0;
+    instr.rm.mode.disp = Instruction::mode_t::DISP_NONE;
+    instr.rm.reg = instr.REG_B;
+
+    instr.r.reg = instr.REG_A;
+
+    instr.disp.val_qu = 0;
+    instr.imm.val_qu = 0;
+
+    PackedInstruction pi{};
+
+    REQUIRE(!pi.ctor());
+
+    REQUIRE(!instr.compile(pi));
+
+    pi.hexDump();
+
+    pi.dtor();
+    instr.dtor();
+
 }

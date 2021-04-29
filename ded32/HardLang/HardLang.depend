@@ -50,7 +50,7 @@
 	<algorithm>
 	<cctype>
 
-1618953410 d:\workspace\.mipt\s2\ded32\hardlang\\include\\hashtable.h
+1619469886 d:\workspace\.mipt\s2\ded32\hardlang\\include\\hashtable.h
 	"general.h"
 	"filebuf.h"
 	"checksum.h"
@@ -65,7 +65,7 @@
 
 1618512888 source:d:\workspace\.mipt\s2\ded32\hardlang\source\fnv1a.asm
 
-1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
+1619604395 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
 	<cstdio>
 	<cstdlib>
 	<cassert>
@@ -73,6 +73,8 @@
 	"general.h"
 	"parser.h"
 	"filebuf.h"
+	"opcode.h"
+	"object.h"
 
 1618826529 d:\workspace\.mipt\s2\ded32\hardlang\\include\\parser.h
 	"general.h"
@@ -80,7 +82,7 @@
 	"lexer.h"
 	"ast.h"
 
-1618991050 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
+1619469896 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
 	"general.h"
 	"parser.h"
 	"vector.h"
@@ -100,23 +102,23 @@
 	"stmttypes.dsl.h"
 	"stmttypes.dsl.h"
 
-1619091214 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
+1619466873 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
 	"general.h"
 	<cstdlib>
 	<cstring>
 	<cassert>
 
-1618848503 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vtable.h
+1619468054 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vtable.h
 
 1608462404 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\exprtypes.dsl.h
 
 1608279340 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\stmttypes.dsl.h
 
-1618828538 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
+1619468725 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
 	"parser.h"
 	<cassert>
 
-1619095179 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+1619469908 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
 	"ast.h"
 	"exprtypes.dsl.h"
 	"pseudofuncs.dsl.h"
@@ -128,13 +130,31 @@
 
 1608477839 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
 
-1619071188 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+1619684492 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
 	"object.h"
 
-1619178429 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+1619684441 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
 	<cstdint>
 	<cstdio>
 	<immintrin.h>
 	"general.h"
 	"vector.h"
+	"opcode.h"
+
+1619603748 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
+	"general.h"
+	"object.h"
+	"opcodes.dslctx.h"
+	"opcodes.dsl.h"
+
+1619684343 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
+	"opcode.h"
+	<initializer_list>
+	<cassert>
+	"opcodes.dslctx.h"
+	"opcodes.dsl.h"
+
+1619444412 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dsl.h
+
+1619443666 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dslctx.h
 
