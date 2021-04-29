@@ -1,47 +1,41 @@
 /*
 
-Филипп любит гулять по своему городу, но знает, что шпионы из ЛесТеха могут быть где угодно, поэтому он хочет узнать, по скольким различным путям он может пройти по городу Долгопрудный. Город Филиппа состоит из всех точек (x,y) на плоскости таких, что x и y неотрицательны. Филипп должен начать прогулку в начале координат (точке (0,0)) и должен закончить путь в точке (k,0). Если Филипп сейчас находится в точке (x,y), то за один шаг он может перейти в точку (x+1,y+1),(x+1,y) или (x+1,y\N{MINUS SIGN}1).
-
-Кроме того, существуют n горизонтальных отрезков, i-й из которых идет от точки x=ai до x=bi, включительно и располагается в y=ci. Гарантируется, что a1=0, an\N{LESS-THAN OR EQUAL TO}k\N{LESS-THAN OR EQUAL TO}bn, и ai=bi\N{MINUS SIGN}1 для всех 2\N{LESS-THAN OR EQUAL TO}i\N{LESS-THAN OR EQUAL TO}n. i-й из этих отрезков заставляет Филиппа находиться только в точках с y координатой в отрезке 0\N{LESS-THAN OR EQUAL TO}y\N{LESS-THAN OR EQUAL TO}ci, когда его x координата находится в отрезке ai\N{LESS-THAN OR EQUAL TO}x\N{LESS-THAN OR EQUAL TO}bi. Заметьте, что когда один отрезок кончается, а другой начинается, то он должен находиться под обоими отрезками одновременно.
-
-Филипп хочет узнать, сколько существует различных путей (последовательностей шагов) из начала координат в точку (k,0), удовлетворяющих этим ограничениям, по модулю 109+7.
+Полный ориентированный взвешенный граф задан матрицей смежности. Постройте матрицу кратчайших путей между его вершинами. Гарантируется, что в графе нет циклов отрицательного веса.
 
 Входные данные
-Первая строка содержит два целых числа n и k (1\N{LESS-THAN OR EQUAL TO}n\N{LESS-THAN OR EQUAL TO}100,1\N{LESS-THAN OR EQUAL TO}k\N{LESS-THAN OR EQUAL TO}1018) — число отрезков и x координата точки назначения.
-
-Следующие n строк содержат по три целых числа ai, bi и ci(0\N{LESS-THAN OR EQUAL TO}ai<bi\N{LESS-THAN OR EQUAL TO}1018,0\N{LESS-THAN OR EQUAL TO}ci\N{LESS-THAN OR EQUAL TO}16) — левый и правый концы отрезка, и его y координата.
-
-Гарантируется, что a1=0,an\N{LESS-THAN OR EQUAL TO}k\N{LESS-THAN OR EQUAL TO}bn, и ai=bi\N{MINUS SIGN}1 для всех 2\N{LESS-THAN OR EQUAL TO}i\N{LESS-THAN OR EQUAL TO}n.
+В первой строке вводится единственное число N (1\N{LESS-THAN OR EQUAL TO}N\N{LESS-THAN OR EQUAL TO}100) — количество вершин графа. В следующих N строках по N чисел задается матрица смежности графа (j-ое число в i-ой строке — вес ребра из вершины i в вершину j). Все числа по модулю не превышают 100. На главной диагонали матрицы — всегда нули.
 
 Выходные данные
-Выведите число путей, удовлетворяющих ограничениям, по модулю 109+7.
+Выведите N строк по N чисел — матрицу расстояний между парами вершин, где j-ое число в i-ой строке равно весу кратчайшего пути из вершины i в j.
 
-Примеры
+Пример
 входные данные
-1 3
-0 3 3
-выходные данные
 4
-входные данные
-2 6
-0 3 0
-3 10 2
+0 5 9 100
+100 0 2 8
+100 100 0 7
+4 100 100 0
 выходные данные
-4
+0 5 7 13
+12 0 2 8
+11 16 0 7
+4 9 11 0
 
 */
 
-#include <cstdio>
+
 #include <cstdlib>
+#include <cstdio>
 #include <cassert>
-#include <string>
-#include <algorithm>
 #include <vector>
+#include <queue>
+#include <algorithm>
+#include <cctype>
+#include <string>
 #include <numeric>
 
 
 namespace abel {
-
 
 template <typename T>
 class Matrix {
@@ -382,51 +376,35 @@ private:
     std::vector<std::vector<T>> buf;
 };
 
-
 }
 
 
 int main() {
-    const unsigned MAX_HEIGHT = 17;
-    const unsigned long long MOD = 1000000007;
+    unsigned n = 0;
+    int res = scanf("%u", &n);
+    assert(res == 1);
 
-    std::vector<abel::Matrix<unsigned long long>> transitions(MAX_HEIGHT, abel::Matrix<unsigned long long>(MAX_HEIGHT, MAX_HEIGHT, 0));
-    for (unsigned i = 0; i < MAX_HEIGHT; ++i) {
-        for (unsigned j = 0; j <= i; ++j) {
-            if (j > 0) transitions[i](j, j - 1) = 1;
-            if (1)     transitions[i](j, j)     = 1;
-            if (j < i) transitions[i](j, j + 1) = 1;
+    abel::Matrix<int> graph{n, n};
+
+    for (unsigned i = 0; i < n; ++i) {
+        for (unsigned j = 0; j < n; ++j) {
+            res = scanf("%d", &graph(i, j));
         }
     }
 
-    unsigned n = 0;
-    unsigned long long k = 0;
-    int res = scanf("%u %llu", &n, &k);
-    assert(res == 2);
+    for (unsigned k = 0; k < n; ++k)
+        for (unsigned i = 0; i < n; ++i)
+            for (unsigned j = 0; j < n; ++j)
+                graph(i, j) = std::min(graph(i, j), graph(i, k) + graph(k, j));
 
-    abel::Matrix<unsigned long long> cur(MAX_HEIGHT, 1, 0);
-    cur(0, 0) = 1;
-
-    for (unsigned i = 0; i < n; ++i) {
-        unsigned long long a = 0;
-        unsigned long long b = 0;
-        unsigned c = 0;
-
-        res = scanf("%llu %llu %u", &a, &b, &c);
-        assert(res == 3);
-
-        b = std::min(b, k);
-
-        cur = transitions[c].pow(std::min(b, k) - a, MOD).mul(cur, MOD);
-    }
-
-    printf("%llu\n", cur(0, 0));
+    graph.print();
 
     return 0;
 }
 
+
 /*
 
-As usual, we rely on matrix power and multiplication. transitions holds legal transitions, cur[i] - the current number to reach (x, i)
+Floyd
 
 */
