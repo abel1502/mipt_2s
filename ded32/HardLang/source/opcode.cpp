@@ -92,13 +92,11 @@ bool Instruction::ctor() {
     rm.scale = SCALE_1;
 
     r.reg    = REG_A;
-    //r.size   = SIZE_Q;
 
-    //imm.size   = SIZE_Q;
     imm.val_qu = 0;
-
-    //disp.size   = SIZE_Q;
     disp.val_qu = 0;
+
+    removed = false;
 
     return false;
 }
@@ -109,6 +107,12 @@ void Instruction::dtor() {
 bool Instruction::compile(PackedInstruction &pi) const {
     // TODO: !!!!!!!!!
     TRY_B(pi.ctor());
+
+    if (removed) {
+        ERR("Can't compile removed commands");  // TODO: Maybe replace with nops instead?
+
+        return true;
+    }
 
     switch (op) {
         #include "opcodes.dslctx.h"
@@ -123,7 +127,7 @@ bool Instruction::compile(PackedInstruction &pi) const {
                 uint8_t opBytes[3] = BYTES;                                                                     \
                                                                                                                 \
                 TRY_B(compile(pi, RMSIZE, RSIZE, DISPSIZE, IMMSIZE, VARIANT, prefixes, opSize, opBytes));       \
-            } break;
+            } return false;
 
         #include "opcodes.dsl.h"
 
@@ -134,13 +138,13 @@ bool Instruction::compile(PackedInstruction &pi) const {
         abort();
     }
 
-    return false;
+    return true;
 }
-
-// ded32 HardLang
 
 bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
                           unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const {
+
+    assert(!removed);
 
     TRY_B(pi.setPrefixes(prefixes));
 
@@ -191,17 +195,97 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize
     }
 
     if (dispsize != -1u) {  // TODO: Also handle displacement for sib!
-        pi.flags.setDispSize(1 << dispsize);
+        assert(rmsize == -1u);
+
+        pi.flags.setDispSize(dispsize);
+        pi.displacement = disp.val_qu;
+    } else if (rmsize != -1u && rm.mode.disp != rm.mode.DISP_NONE) {
+        assert(dispsize == -1u);
+
+        pi.flags.setDispSize(rm.mode.disp);
         pi.displacement = disp.val_qu;
     }
 
     if (immsize != -1u) {
-        pi.flags.setImmSize(1 << immsize);
+        pi.flags.setImmSize(immsize);
         pi.immediate = imm.val_qu;
     }
 
     return false;
 }
+
+Instruction &Instruction::setOp(Opcode_e new_op) {
+    op = new_op;
+
+    return *this;
+}
+
+Instruction &Instruction::setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale) {
+    rm.mode = mode;
+    rm.reg = reg;
+    rm.index = index;
+    rm.scale = scale;
+
+    return *this;
+}
+
+Instruction &Instruction::setRmReg(reg_e reg) {
+    return setRm({mode_t::MODE_REG, 0, mode_t::DISP_NONE}, reg, REG_A, SCALE_1);
+}
+
+Instruction &Instruction::setRmMemReg(reg_e reg, mode_t::disp_e dispMode) {
+    return setRm({mode_t::MODE_MEM_REG, 0, dispMode}, reg, REG_A, SCALE_1);
+}
+
+Instruction &Instruction::setRmMemRip() {
+    return setRm({mode_t::MODE_MEM_RIP, 0, mode_t::DISP_32}, REG_A, REG_A, SCALE_1);
+}
+
+Instruction &Instruction::setRmSib() {
+    return setRm({mode_t::MODE_MEM_SIB, 0, mode_t::DISP_32}, REG_A, REG_A, SCALE_1);
+}
+
+Instruction &Instruction::setRmSib(reg_e base, mode_t::disp_e dispMode) {
+    return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_BASE, dispMode}, base, REG_A, SCALE_1);
+}
+
+Instruction &Instruction::setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode) {
+    return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_INDEX, dispMode}, REG_A, index, scale);
+}
+
+Instruction &Instruction::setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode) {
+    return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_INDEX | mode_t::SIB_BASE, dispMode}, base, index, scale);
+}
+
+Instruction &Instruction::setR(reg_e reg) {
+    r.reg = reg;
+
+    return *this;
+}
+
+Instruction &Instruction::setDisp(int64_t value) {
+    disp.val_q = value;
+
+    return *this;
+}
+
+/*Instruction &Instruction::setDisp(uint64_t value) {
+    disp.val_qu = value;
+
+    return *this;
+}*/
+
+Instruction &Instruction::setImm(int64_t value) {
+    imm.val_q = value;
+
+    return *this;
+}
+
+/*Instruction &Instruction::setImm(uint64_t value) {
+    imm.val_qu = value;
+
+    return *this;
+}*/
 
 }
 

@@ -179,25 +179,63 @@ public:
     void dtor();
 
 
-    void setOp(Opcode_e op);
+    Instruction &setOp(Opcode_e new_op);
 
-    void setRM(mode_t mode, reg_e reg, reg_e index, scale_e scale);
+    /// RM reg
+    Instruction &setRmReg(reg_e reg);
 
-    void setR(reg_e reg);
+    /// RM [reg]
+    Instruction &setRmMemReg(reg_e reg, mode_t::disp_e dispMode = mode_t::DISP_NONE);
 
-    void setDisp(uint64_t value);
+    /// RM [$+disp32]
+    Instruction &setRmMemRip();
 
-    void setImm(uint64_t value);
+    /// RM [disp32]
+    Instruction &setRmSib();
+
+    /// RM [base </ + disp8/ + disp32>]
+    Instruction &setRmSib(reg_e base, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+
+    /// RM [index * scale </ + disp8/ + disp32>]
+    Instruction &setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+
+    /// RM [base + index * scale </ + disp8/ + disp32>]
+    Instruction &setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+
+    Instruction &setR(reg_e reg);
+
+    Instruction &setDisp(int64_t value);
+
+    //Instruction &setDisp(uint64_t value);
+
+    Instruction &setImm(int64_t value);
+
+    //Instruction &setImm(uint64_t value);
+
+
+    inline bool isRemoved() const {
+        return removed;
+    }
+
+    inline void remove() {
+        removed = true;
+    }
 
     bool compile(PackedInstruction &pi) const;
 
-//private:
+private:
     Opcode_e    op;
 
     OperandRM   rm;
     OperandR    r;
     OperandDisp disp;
     OperandImm  imm;
+
+    bool removed;
+
+    // TODO: Symbol references (for disp, for imm and for the instruction's address)
+
+    Instruction &setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale);
 
     bool compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
                  unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const;
