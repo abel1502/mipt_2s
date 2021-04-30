@@ -100,9 +100,9 @@ struct PackedInstruction {
         type_e   type       : 2;  /// Plain, REX, VEX2, VEX3
         unsigned opcodeSize : 2;  /// 1, 2, 3 (Opcode size for REX)
         bool     disp       : 1;  /// (Is displacement present?)
-        unsigned dispSize   : 2;  /// 1, 2, 4, 8 (If displacement is present, its size)
+        unsigned dispSize   : 2;  /// 0, 1, 2, 3 (If displacement is present, its size's logarithm)
         bool     imm        : 1;  /// (Is immediate present?)
-        unsigned immSize    : 2;  /// 1, 2, 4, 8 (If immediate is present, its size)
+        unsigned immSize    : 2;  /// 0, 1, 2, 3 (If immediate is present, its size's logarithm)
         bool     modrm      : 1;  /// (Is modrm byte present?)
         bool     sib        : 1;  /// (Is sib byte present?)
 
@@ -127,7 +127,7 @@ struct PackedInstruction {
         }
 
         inline unsigned getDispSize() const {
-            return hasDisp() ? 1 << dispSize : 0;
+            return hasDisp() ? dispSize : 0;
         }
 
         inline bool hasImm() const {
@@ -168,15 +168,15 @@ struct PackedInstruction {
         inline void setDispSize(unsigned new_dispSize) {
             assert((new_dispSize & (new_dispSize - 1)) == 0);
 
-            disp = new_dispSize == 0;
-            dispSize = _tzcnt_u32(new_dispSize);
+            disp = new_dispSize != 0;
+            dispSize = new_dispSize;
         }
 
         inline void setImmSize(unsigned new_immSize) {
             assert((new_immSize & (new_immSize - 1)) == 0);
 
-            imm = new_immSize == 0;
-            immSize = _tzcnt_u32(new_immSize);
+            imm = new_immSize != 0;
+            immSize = new_immSize;
         }
 
         inline void setHasModrm(bool hasModrm) {
