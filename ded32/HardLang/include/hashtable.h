@@ -31,12 +31,11 @@ public:
     };
 
     static constexpr unsigned DEFAULT_CAPACITY = 256;
-    static constexpr unsigned KEY_LEN = 64;  // TODO: Maybe 56 to have the struct's total size be a power of 2
+    static constexpr unsigned KEY_LEN = 64;
     static constexpr unsigned CRITICAL_LOAD_FACTOR = 0x80;  // per 0x100
     static constexpr unsigned RESIZE_FACTOR = 2;
 
     using key_t = char[KEY_LEN];
-    //typedef char key_t[KEY_LEN];
 
     enum NodeType_e {
         NODE_FULL = 0,
@@ -48,7 +47,6 @@ public:
         key_t key;
         T value;
         NodeType_e type;
-        // TODO: Maybe hold a precomputed crc32 here for fast rehashing
 
         Node() :
             key{""},
