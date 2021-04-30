@@ -69,22 +69,22 @@ void PackedInstruction::dtor() {
 
 void PackedInstruction::hexDump() const {
     for (unsigned i = 0; i < flags.getPrefCnt(); ++i) {
-        printf("%02x ", prefixes[i]);
+        printf("%02X ", prefixes[i]);
     }
 
     switch (flags.getType()) {
     case T_PLAIN:
         for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
-            printf("%02x", rawOp[i]);
+            printf("%02X", rawOp[i]);
         }
 
         break;
 
     case T_REX:
-        printf("%02x ", rex.rex);
+        printf("%02X ", rex.rex);
 
         for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
-            printf("%02x", rex.op[i]);
+            printf("%02X", rex.op[i]);
         }
 
         break;
@@ -102,12 +102,12 @@ void PackedInstruction::hexDump() const {
     printf(" ");
 
     if (flags.hasModrm()) {
-        printf("%02x ", modrm.full);
+        printf("%02X ", modrm.full);
     }
 
     if (flags.hasSib()) {
         assert(flags.hasModrm());
-        printf("%02x ", sib.full);
+        printf("%02X ", sib.full);
     }
 
     switch (flags.getDispSize()) {
@@ -115,19 +115,19 @@ void PackedInstruction::hexDump() const {
         break;
 
     case 1:
-        printf("%02x ",    (uint8_t) displacement);
+        printf("%02X ",    (uint8_t) displacement);
         break;
 
     case 2:
-        printf("%04x ",    (uint16_t)displacement);
+        printf("%04X ",    (uint16_t)displacement);
         break;
 
     case 4:
-        printf("%08x ",    (uint32_t)displacement);
+        printf("%08X ",    (uint32_t)displacement);
         break;
 
     case 8:
-        printf("%016llx ", (uint64_t)displacement);
+        printf("%016llX ", (uint64_t)displacement);
         break;
 
     default:
@@ -140,19 +140,19 @@ void PackedInstruction::hexDump() const {
         break;
 
     case 1:
-        printf("%02x ",    (uint8_t) immediate);
+        printf("%02X ",    (uint8_t) immediate);
         break;
 
     case 2:
-        printf("%04x ",    (uint16_t)immediate);
+        printf("%04X ",    (uint16_t)immediate);
         break;
 
     case 4:
-        printf("%08x ",    (uint32_t)immediate);
+        printf("%08X ",    (uint32_t)immediate);
         break;
 
     case 8:
-        printf("%016llx ", (uint64_t)immediate);
+        printf("%016llX ", (uint64_t)immediate);
         break;
 
     default:
