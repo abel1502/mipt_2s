@@ -48,6 +48,7 @@ void test();
 int main(int argc, char **argv) {
     #ifdef TEST
 
+    verbosity = 3;
     test();
     return 0;
 
@@ -189,17 +190,10 @@ void test() {
 
     REQUIRE(!instr.ctor());
 
-    instr.op = Opcode_e::mov_rm64_r64;
-
-    instr.rm.mode.mode = Instruction::mode_t::MODE_MEM_REG;
-    instr.rm.mode.sib = 0;
-    instr.rm.mode.disp = Instruction::mode_t::DISP_NONE;
-    instr.rm.reg = instr.REG_B;
-
-    instr.r.reg = instr.REG_A;
-
-    instr.disp.val_qu = 0;
-    instr.imm.val_qu = 0;
+    instr.setOp(Opcode_e::mov_rm64_r64)
+         .setRmMemReg(instr.REG_B, Instruction::mode_t::DISP_8)
+         .setR(instr.REG_A)
+         .setDisp(-123);
 
     PackedInstruction pi{};
 
