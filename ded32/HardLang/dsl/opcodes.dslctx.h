@@ -1,4 +1,8 @@
-#define OPDEF_BIN_ARITHM(NAME, BYTE_RM_R, BYTE_R_RM, BYTE_RM_IMM, IMM_VARIANT)                          \
+#ifndef OPCODES_DSLCTX_H
+#define OPCODES_DSLCTX_H
+
+
+#define OPDEF_BIN_COMMON(NAME, BYTE_RM_R, BYTE_R_RM, BYTE_RM_IMM, IMM_VARIANT)                          \
     OPDEF(NAME##_rm8_r8,     {BYTE_RM_R - 1},   SIZE_B, SIZE_B,     -1,     -1,          -1, {})        \
     OPDEF(NAME##_rm16_r16,   {BYTE_RM_R},       SIZE_W, SIZE_W,     -1,     -1,          -1, {0x66})    \
     OPDEF(NAME##_rm32_r32,   {BYTE_RM_R},       SIZE_D, SIZE_D,     -1,     -1,          -1, {})        \
@@ -13,4 +17,17 @@
     OPDEF(NAME##_rm16_imm16, {BYTE_RM_IMM},     SIZE_W,     -1,     -1, SIZE_W, IMM_VARIANT, {0x66})    \
     OPDEF(NAME##_rm32_imm32, {BYTE_RM_IMM},     SIZE_D,     -1,     -1, SIZE_D, IMM_VARIANT, {})        \
     OPDEF(NAME##_rm64_imm32, {BYTE_RM_IMM},     SIZE_Q,     -1,     -1, SIZE_D, IMM_VARIANT, {})
-    // The last one sign-extends!!!
+// The last one sign-extends!!!
+
+
+#define OPDEF_UN_COMMON(NAME, BYTE, VARIANT)                                                            \
+    OPDEF(NAME##_rm8,        {BYTE - 1},        SIZE_B,     -1,     -1,     -1,     VARIANT, {})        \
+    OPDEF(NAME##_rm16,       {BYTE},            SIZE_W,     -1,     -1,     -1,     VARIANT, {0x66})    \
+    OPDEF(NAME##_rm32,       {BYTE},            SIZE_D,     -1,     -1,     -1,     VARIANT, {})        \
+    OPDEF(NAME##_rm64,       {BYTE},            SIZE_Q,     -1,     -1,     -1,     VARIANT, {})        \
+
+// Brace
+#define B_(...)  {__VA_ARGS__}
+
+
+#endif // OPCODES_DSLCTX_H
