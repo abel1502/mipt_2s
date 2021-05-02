@@ -141,7 +141,7 @@ bool Instruction::compile(PackedInstruction &pi) const {
     return true;
 }
 
-bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
+bool Instruction::compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize,
                           unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const {
 
     assert(!removed);
@@ -149,15 +149,11 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize
     TRY_B(pi.setPrefixes(prefixes));
 
     // TODO: Also handle VEX-es
-    if ((rmsize != -1u && rm.usesRexReg()) ||
-        (rsize  != -1u &&  r.usesRexReg()) ||
-        ((rmsize == SIZE_Q || rsize == SIZE_Q || dispsize == SIZE_Q || immsize == SIZE_Q))) {
-        // TODO: Also check that the default operand size isn't 64 for this operation
-
+    if (needsRex(rmSize, rSize, dispSize, immSize)) {
         pi.flags.setType(pi.T_REX); // TODO: Encapsulate!!
         pi.rex.magic = 0b0100;
         // TODO: Encapsulate
-        pi.rex.W = rmsize == SIZE_Q || rsize == SIZE_Q || dispsize == SIZE_Q || immsize == SIZE_Q;
+        pi.rex.W = rmSize == SIZE_Q || rSize == SIZE_Q || dispSize == SIZE_Q || immSize == SIZE_Q;
 
         TRY_B(pi.setRexOp(opBytes, opSize));
     } else {
@@ -165,7 +161,7 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize
         TRY_B(pi.setRawOp(opBytes, opSize));
     }
 
-    if (rmsize != -1u) {
+    if (rmSize != -1u) {
         bool hasSib = false;
         TRY_B(rm.writeModRm(pi.modrm, pi.sib, hasSib));
 
@@ -177,7 +173,7 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize
         }
     }
 
-    if (rsize != -1u) {
+    if (rSize != -1u) {
         if (!pi.flags.hasModrm()) {
             ERR("Embedded register operands not yet implemented, sorry");
             return true;
@@ -194,20 +190,34 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize
         pi.modrm.reg = variant;
     }
 
-    if (dispsize != -1u) {  // TODO: Also handle displacement for sib!
-        assert(rmsize == -1u);
+    if (dispSize != -1u) {  // TODO: Also handle displacement for sib!
+        assert(rmSize == -1u);
 
-        pi.flags.setDispSize(dispsize);
+        pi.flags.setDispSize(dispSize);
         pi.displacement = disp.val_qu;
-    } else if (rmsize != -1u && rm.mode.disp != rm.mode.DISP_NONE) {
-        assert(dispsize == -1u);
+    } else if (rmSize != -1u && rm.mode.disp != rm.mode.DISP_NONE) {
+        assert(dispSize == -1u);
 
-        pi.flags.setDispSize(rm.mode.disp);
+        switch (rm.mode.disp) {
+        case rm.mode.DISP_8:
+            pi.flags.setDispSize(0);
+            break;
+
+        case rm.mode.DISP_32:
+            pi.flags.setDispSize(2);
+            break;
+
+        case rm.mode.DISP_NONE:
+        default:
+            ERR("Shouldn't be reachable");
+            abort();
+        }
+
         pi.displacement = disp.val_qu;
     }
 
-    if (immsize != -1u) {
-        pi.flags.setImmSize(immsize);
+    if (immSize != -1u) {
+        pi.flags.setImmSize(immSize);
         pi.immediate = imm.val_qu;
     }
 
@@ -269,23 +279,38 @@ Instruction &Instruction::setDisp(int64_t value) {
     return *this;
 }
 
-/*Instruction &Instruction::setDisp(uint64_t value) {
-    disp.val_qu = value;
-
-    return *this;
-}*/
-
 Instruction &Instruction::setImm(int64_t value) {
     imm.val_q = value;
 
     return *this;
 }
 
-/*Instruction &Instruction::setImm(uint64_t value) {
-    imm.val_qu = value;
+unsigned Instruction::getLength() const {
+    switch (op) {
+        #include "opcodes.dslctx.h"
 
-    return *this;
-}*/
+        #define OPDEF(NAME, BYTES, RMSIZE, RSIZE, DISPSIZE, IMMSIZE, VARIANT, REQPREFIX)                        \
+            case Opcode_e::NAME: {                                                                              \
+                static_assert(RMSIZE == -1 || DISPSIZE == -1);                                                  \
+                                                                                                                \
+                constexpr unsigned prefSize = std::initializer_list<uint8_t>REQPREFIX.size();                   \
+                constexpr unsigned opSize = std::initializer_list<uint8_t>BYTES.size();                         \
+                                                                                                                \
+                return getLength(prefSize, opSize, RMSIZE, RSIZE, DISPSIZE, IMMSIZE);                                                                                        \
+            };
+
+        #include "opcodes.dsl.h"
+
+        #undef OPDEF
+
+    default:
+        ERR("Unknown opcode.");
+        abort();
+    }
+
+    return -1;
+}
+
 
 }
 
