@@ -32,7 +32,7 @@ void TypeSpec::dtor() {
     type = TypeSpec::T_VOID;
 }
 
-bool TypeSpec::compile(FILE *ofile) const {
+/*bool TypeSpec::compile(ObjectFactory &obj) const {
     switch (type) {
     case TypeSpec::T_DBL:
         fprintf(ofile, "df:");
@@ -54,7 +54,7 @@ bool TypeSpec::compile(FILE *ofile) const {
     }
 
     return false;
-}
+}*/
 
 void TypeSpec::reconstruct(FILE *ofile) const {
     switch (type) {
@@ -138,26 +138,48 @@ void Var::dtor() {
     name = nullptr;
 }
 
-bool Var::compile(FILE *ofile, const Scope *scope) const {
-    return compile(ofile, scope->getInfo(name));
+bool Var::reference(Instruction &instr, const Scope *scope) const {
+    return reference(instr, scope->getInfo(name));
 }
 
-bool Var::compile(FILE *ofile, VarInfo vi) {
+bool Var::reference(Instruction &instr, VarInfo vi) {
     if (!vi.var) {
         //ERR("Unknown variable \"%.*s\"", name->getLength(), name->getStr());
+        ERR("Shouldn't be reachable");
         assert(false);
 
         return true;
     }
 
-    TRY_B(vi.var->ts.compile(ofile));
-    fprintf(ofile, "[rz+%u]", vi.offset);
+    //TRY_B(vi.var->ts.compile(ofile));
+    //fprintf(ofile, "[rz+%u]", vi.offset);
+
+    // TODO: Maybe optimize to DISP_8?
+    instr.setRmSib(instr.REG_SP, Instruction::mode_t::DISP_32).setDisp(vi.offset);
 
     return false;
 }
 
 const TypeSpec Var::getType() const {
     return ts;
+}
+
+Instruction::size_e Var::getSize() const {
+    switch (ts.type) {
+    case T_INT4:
+        return Instruction::SIZE_D;
+
+    case T_INT8:
+        return Instruction::SIZE_Q;
+
+    case T_DBL:
+        return Instruction::SIZE_MMX;
+
+    case ts.T_VOID:
+    default:
+        ERR("Shouldn't be reachable");
+        abort();
+    }
 }
 
 const Token *Var::getName() const {
@@ -421,7 +443,7 @@ TypeSpec::Mask Expression::deduceType(TypeSpec::Mask mask, Scope *scope, const P
     return typeMask;
 }
 
-bool Expression::compile(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::compile(ObjectFactory &obj, Scope *scope, const Program *prog) {
     /*printf("; EXPR COMPILE\n");
     #define DEF_TYPE(NAME)                          \
         if (vtable_ == &Expression::VTYPE(NAME)) {  \
@@ -433,10 +455,10 @@ bool Expression::compile(FILE *ofile, Scope *scope, const Program *prog) {
         ERR("; ->UNKNOWN TYPE\n");
         assert(false);
     }*/
-    return VCALL(this, compile, ofile, scope, prog);
+    return VCALL(this, compile, obj, scope, prog);
 }
 
-bool Expression::compileVarRecepient(FILE *ofile, Scope *scope, const Program *) {
+bool Expression::compileVarRecepient(ObjectFactory &obj, Scope *scope, const Program *) {
     assert(isVarRef());
 
     fprintf(ofile,
@@ -473,7 +495,7 @@ TypeSpec::Mask Expression::getPseudofuncRtypeMask() const {
     return TypeSpec::NoneMask;
 }
 
-bool Expression::compilePseudofunc(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::compilePseudofunc(ObjectFactory &obj, Scope *scope, const Program *prog) {
     #define PF_DEDUCE_CHILD_TYPE(IND, MASK) \
         children[IND].deduceType(MASK, scope, prog)
 
@@ -691,7 +713,7 @@ TypeSpec::Mask Expression::VMIN(FuncCall, deduceType)(Scope *, const Program *pr
 }
 
 
-bool Expression::VMIN(Void, compile)(FILE *, Scope *, const Program *) {
+bool Expression::VMIN(Void, compile)(ObjectFactory &, Scope *, const Program *) {
     assert(children.getSize() == 0);
 
     // Let's leave it trivial for now, I guess
@@ -703,7 +725,7 @@ bool Expression::VMIN(Void, compile)(FILE *, Scope *, const Program *) {
     return false;
 }
 
-bool Expression::VMIN(Asgn, compile)(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
     assert(children.getSize() == 2);
 
     TypeSpec exprType{};
@@ -757,7 +779,7 @@ bool Expression::VMIN(Asgn, compile)(FILE *ofile, Scope *scope, const Program *p
     return false;
 }
 
-bool Expression::VMIN(PolyOp, compile)(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
     assert(children.getSize() > 0);
     //assert(children.getSize() > 1);
 
@@ -841,7 +863,7 @@ bool Expression::VMIN(PolyOp, compile)(FILE *ofile, Scope *scope, const Program 
     return false;
 }
 
-bool Expression::VMIN(Neg, compile)(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
     assert(children.getSize() == 1);
 
     TypeSpec exprType{};
@@ -858,7 +880,7 @@ bool Expression::VMIN(Neg, compile)(FILE *ofile, Scope *scope, const Program *pr
     return false;
 }
 
-bool Expression::VMIN(Cast, compile)(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
     assert(children.getSize() == 1);
 
     TypeSpec exprType{};
@@ -970,7 +992,7 @@ bool Expression::VMIN(Cast, compile)(FILE *ofile, Scope *scope, const Program *p
     return false;
 }
 
-bool Expression::VMIN(Num, compile)(FILE *ofile, Scope *, const Program *) {
+bool Expression::VMIN(Num, compile)(ObjectFactory &obj, Scope *, const Program *) {
     assert(children.getSize() == 0);
 
     TypeSpec exprType{};
@@ -1007,7 +1029,7 @@ bool Expression::VMIN(Num, compile)(FILE *ofile, Scope *, const Program *) {
     return false;
 }
 
-bool Expression::VMIN(VarRef, compile)(FILE *ofile, Scope *scope, const Program *) {
+bool Expression::VMIN(VarRef, compile)(ObjectFactory &obj, Scope *scope, const Program *) {
     assert(children.getSize() == 0);
 
     TypeSpec exprType{};
@@ -1031,7 +1053,7 @@ bool Expression::VMIN(VarRef, compile)(FILE *ofile, Scope *scope, const Program 
     return false;
 }
 
-bool Expression::VMIN(FuncCall, compile)(FILE *ofile, Scope *scope, const Program *prog) {
+bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
     TypeSpec exprType{};
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
 
@@ -1271,7 +1293,7 @@ void Code::simplifyLastEmpty() {
     }
 }
 
-bool Code::compile(FILE *ofile, TypeSpec rtype, const Program *prog) {
+bool Code::compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog) {
     for (unsigned i = 0; i < stmts.getSize(); ++i) {
         TRY_B(stmts[i].compile(ofile, &scope, rtype, prog));
     }
@@ -1378,8 +1400,8 @@ bool Statement::makeVar(Var** out_var) {
     return false;
 }
 
-bool Statement::compile(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog) {
-    return VCALL(this, compile, ofile, scope, rtype, prog);
+bool Statement::compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
+    return VCALL(this, compile, obj, scope, rtype, prog);
 }
 
 void Statement::reconstruct(FILE *ofile, unsigned indent) const {
@@ -1430,14 +1452,14 @@ void Statement::VMIN(Empty, dtor)() {
 }
 
 
-bool Statement::VMIN(Compound, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Compound, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
     code.getScope()->setParent(scope);
-    TRY_B(code.compile(ofile, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog));
 
     return false;
 }
 
-bool Statement::VMIN(Return, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
     if (rtype.type == TypeSpec::T_VOID) {
         if (!expr.isVoid()) {
             ERR("Void functions mustn't return values");
@@ -1455,7 +1477,7 @@ bool Statement::VMIN(Return, compile)(FILE *ofile, Scope *scope, TypeSpec rtype,
     return false;
 }
 
-bool Statement::VMIN(Loop, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
     fprintf(ofile,
             "; while (\n"
             "$__loop_in_%p:\n"  // TODO: Maybe change to something more adequate
@@ -1483,7 +1505,7 @@ bool Statement::VMIN(Loop, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, c
     return false;
 }
 
-bool Statement::VMIN(Cond, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
     // TODO: Same as for the loop
     // TODO: Maybe simplify the empty else
 
@@ -1522,7 +1544,7 @@ bool Statement::VMIN(Cond, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, c
     return false;
 }
 
-bool Statement::VMIN(VarDecl, compile)(FILE *ofile, Scope *scope, TypeSpec, const Program *prog) {
+bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
     TRY_B(scope->addVar(&var));
 
     // TODO: More precise logging (type, etc.)
@@ -1545,7 +1567,7 @@ bool Statement::VMIN(VarDecl, compile)(FILE *ofile, Scope *scope, TypeSpec, cons
     return false;
 }
 
-bool Statement::VMIN(Expr, compile)(FILE *ofile, Scope *scope, TypeSpec, const Program *prog) {
+bool Statement::VMIN(Expr, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
     TypeSpec::Mask mask = expr.deduceType(TypeSpec::AllMask, scope, prog);
 
     TRY_B(expr.compile(ofile, scope, prog));  // Ambiguousness of the mask is checked inside
@@ -1557,7 +1579,7 @@ bool Statement::VMIN(Expr, compile)(FILE *ofile, Scope *scope, TypeSpec, const P
     return false;
 }
 
-bool Statement::VMIN(Empty, compile)(FILE *, Scope *, TypeSpec, const Program *) {
+bool Statement::VMIN(Empty, compile)(ObjectFactory &, Scope *, TypeSpec, const Program *) {
     return false;
 }
 
@@ -1711,7 +1733,7 @@ bool Function::registerArgs() {
     return false;
 }
 
-bool Function::compile(FILE* ofile, const Program *prog) {
+bool Function::compile(ObjectFactory &obj, const Program *prog) {
     fprintf(ofile, "\n$__func_%.*s:\n", name->getLength(), name->getStr());
 
     // TODO: Maybe do it a bit less manually, at the cost of speed
@@ -1805,7 +1827,7 @@ void Program::popFunction() {
     functions.pop();
 }
 
-bool Program::compile(FILE* ofile) {
+bool Program::compile(ObjectFactory &obj) {
     fprintf(ofile,
             "; === [ ALFC ver. NULL ] ===\n\n"
             "; Entrypoint + loader:\n"

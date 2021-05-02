@@ -10,6 +10,7 @@
 
 #include "hashtable.h"
 #include "vtable.h"
+#include "object.h"
 
 #include <cstdio>
 #include <cstdint>
@@ -51,7 +52,8 @@ struct TypeSpec {
 
     void dtor();
 
-    bool compile(FILE *ofile) const;
+    // TODO: Not viable for x86
+    // bool compile(ObjectFactory &obj) const;
 
     uint32_t getSize() const;
 
@@ -70,7 +72,7 @@ struct TypeSpec {
 class Var;
 
 struct VarInfo {
-    uint32_t offset;
+    uint32_t offset;  // TODO: offsets are negative this time
     const Var *var;
 };
 
@@ -89,11 +91,14 @@ public:
 
     void dtor();
 
-    bool compile(FILE *ofile, const Scope *scope) const;
+    // TODO: Should be changed to configure rm of an Instruction insted
+    bool reference(Instruction &instr, const Scope *scope) const;
 
-    static bool compile(FILE *ofile, VarInfo vi);
+    static bool reference(Instruction &instr, VarInfo vi);
 
     const TypeSpec getType() const;
+
+    Instruction::size_e getSize() const;
 
     const Token *getName() const;
 
@@ -171,7 +176,7 @@ public:
     VTABLE_STRUCT {
         VDECL(Expression, void, dtor);
         VDECL(Expression, TypeSpec::Mask, deduceType, Scope *scope, const Program *prog);
-        VDECL(Expression, bool, compile, FILE *ofile, Scope *scope, const Program *prog);
+        VDECL(Expression, bool, compile, ObjectFactory &obj, Scope *scope, const Program *prog);
         VDECL(Expression, void, reconstruct, FILE *ofile) const;
     };
 
@@ -216,7 +221,7 @@ public:
 
     TypeSpec::Mask deduceType(TypeSpec::Mask mask, Scope *scope, const Program *prog);
 
-    bool compile(FILE *ofile, Scope *scope, const Program *prog);
+    bool compile(ObjectFactory &obj, Scope *scope, const Program *prog);
 
     void reconstruct(FILE *ofile) const;
 
@@ -252,11 +257,11 @@ private:
 
     Vector<Expression> children;
 
-    bool compileVarRecepient(FILE *ofile, Scope *scope, const Program *prog);
+    bool compileVarRecepient(ObjectFactory &obj, Scope *scope, const Program *prog);
 
     TypeSpec::Mask getPseudofuncRtypeMask() const;
 
-    bool compilePseudofunc(FILE *ofile, Scope *scope, const Program *prog);
+    bool compilePseudofunc(ObjectFactory &obj, Scope *scope, const Program *prog);
 
     #define DEF_TYPE(NAME) \
         void VMIN(NAME, dtor)();
@@ -269,7 +274,7 @@ private:
     #undef DEF_TYPE
 
     #define DEF_TYPE(NAME) \
-        bool VMIN(NAME, compile)(FILE *ofile, Scope *scope, const Program *prog);
+        bool VMIN(NAME, compile)(ObjectFactory &obj, Scope *scope, const Program *prog);
     #include "exprtypes.dsl.h"
     #undef DEF_TYPE
 
@@ -300,7 +305,7 @@ public:
 
     void simplifyLastEmpty();
 
-    bool compile(FILE *ofile, TypeSpec rtype, const Program *prog);
+    bool compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog);
 
     void reconstruct(FILE *ofile, unsigned indent) const;
 
@@ -320,7 +325,7 @@ public:
 
     VTABLE_STRUCT {
         VDECL(Statement, void, dtor);
-        VDECL(Statement, bool, compile, FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog);
+        VDECL(Statement, bool, compile, ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
         VDECL(Statement, void, reconstruct, FILE *ofile, unsigned indent) const;
     };
 
@@ -358,7 +363,7 @@ public:
 
     bool makeVar(Var **out_var);
 
-    bool compile(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog);
+    bool compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
 
     void reconstruct(FILE *ofile, unsigned indent) const;
 
@@ -386,7 +391,7 @@ private:
     #undef DEF_TYPE
 
     #define DEF_TYPE(NAME) \
-        bool VMIN(NAME, compile)(FILE *ofile, Scope *scope, TypeSpec rtype, const Program *prog);
+        bool VMIN(NAME, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
     #include "stmttypes.dsl.h"
     #undef DEF_TYPE
 
@@ -423,7 +428,7 @@ public:
     /// Register all args into the current scope
     bool registerArgs();
 
-    bool compile(FILE *ofile, const Program *prog);
+    bool compile(ObjectFactory &obj, const Program *prog);
 
     bool isMain() const;
 
@@ -463,7 +468,7 @@ public:
 
     void popFunction();
 
-    bool compile(FILE *ofile);
+    bool compile(ObjectFactory &obj);
 
     const Function *getFunction(const Token *name) const;
 

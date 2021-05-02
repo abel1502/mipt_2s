@@ -41,7 +41,7 @@
 	"tokens.dsl.h"
 	"tokens.dsl.h"
 
-1608203580 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\tokens.dsl.h
+1619959046 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\tokens.dsl.h
 
 1618952484 source:d:\workspace\.mipt\s2\ded32\hardlang\source\hashtable.cpp
 	"hashtable.h"
@@ -65,7 +65,7 @@
 
 1618512888 source:d:\workspace\.mipt\s2\ded32\hardlang\source\fnv1a.asm
 
-1619783882 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
+1619962459 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
 	<cstdio>
 	<cstdlib>
 	<cassert>
@@ -82,12 +82,13 @@
 	"lexer.h"
 	"ast.h"
 
-1619469896 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
+1619965570 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
 	"general.h"
 	"parser.h"
 	"vector.h"
 	"hashtable.h"
 	"vtable.h"
+	"object.h"
 	<cstdio>
 	<cstdint>
 	"exprtypes.dsl.h"
@@ -130,10 +131,10 @@
 
 1608477839 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
 
-1619785765 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+1619959332 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
 	"object.h"
 
-1619784728 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+1619959069 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
 	<cstdint>
 	<cstdio>
 	<immintrin.h>
@@ -141,7 +142,7 @@
 	"vector.h"
 	"opcode.h"
 
-1619783016 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
+1619957320 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
 	"general.h"
 	"object.h"
 	"opcodes.dslctx.h"
