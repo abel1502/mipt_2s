@@ -166,8 +166,6 @@ int main(int argc, char **argv) {
         ObjectFactory of{};
 
         if (of.ctor()) {  // TODO: Switch
-            ERR("System error");
-
             return 2;
         }
 

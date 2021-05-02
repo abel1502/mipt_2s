@@ -281,11 +281,11 @@ public:
     /// Returns -1u on failure
     unsigned placeLabel();
 
-    bool placeLabel(unsigned reservedLabelIdx);
+    result_e placeLabel(unsigned reservedLabelIdx);
 
     // TODO: Ways to reference a label in an instruction
 
-    bool addInstr();
+    result_e addInstr();
 
     Instruction &getLastInstr();
 

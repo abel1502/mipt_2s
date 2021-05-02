@@ -280,15 +280,13 @@ reg_e ObjectFactory::stkTos(unsigned depth) const {
 
 ObjectFactory::result_e ObjectFactory::stkPush() {
     if (stkCurSize == REGSTK_SIZE) {
-        if (addInstr())
-            return lastResult = R_BADMEMORY;
+        TRY(addInstr());
         getLastInstr().setOp(Opcode_e::add_rm64_imm32)
                       .setRmReg(REG_BP)
                       .setImm(8 * REGSTK_SIZE / 2);
 
         for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
-            if (addInstr())
-                return lastResult = R_BADMEMORY;
+            TRY(addInstr());
             getLastInstr().setOp(Opcode_e::mov_rm64_r64)
                           .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
                           .setR(stkTos(REGSTK_SIZE - i))
@@ -305,15 +303,13 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
 
 ObjectFactory::result_e ObjectFactory::stkPop() {
     if (stkCurSize == 0) {
-        if (addInstr())
-            return lastResult = R_BADMEMORY;
+        TRY(addInstr());
         getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
                       .setRmReg(REG_BP)
                       .setImm(8 * REGSTK_SIZE / 2);
 
         for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
-            if (addInstr())
-                return lastResult = R_BADMEMORY;
+            TRY(addInstr());
             getLastInstr().setOp(Opcode_e::mov_r64_rm64)
                           .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
                           .setR(stkTos(REGSTK_SIZE - i))
@@ -332,15 +328,13 @@ ObjectFactory::result_e ObjectFactory::stkFlush() {
     if (stkCurSize == 0)
         return lastResult = R_OK;
 
-    if (addInstr())
-        return lastResult = R_BADMEMORY;
+    TRY(addInstr());
     getLastInstr().setOp(Opcode_e::add_rm64_imm32)
                   .setRmReg(REG_BP)
                   .setImm(8 * stkCurSize);
 
     for (unsigned i = 0; i < stkCurSize; ++i) {
-        if (addInstr())
-            return lastResult = R_BADMEMORY;
+        TRY(addInstr());
         getLastInstr().setOp(Opcode_e::mov_rm64_r64)
                       .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
                       .setR(stkTos(stkCurSize - i))
@@ -357,15 +351,13 @@ ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
     if (stkCurSize >= req)
         return lastResult = R_OK;
 
-    if (addInstr())
-        return lastResult = R_BADMEMORY;
+    TRY(addInstr());
     getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
                   .setRmReg(REG_BP)
                   .setImm(8 * (req - stkCurSize));
 
     for (; stkCurSize < req; ++stkCurSize) {
-        if (addInstr())
-            return lastResult = R_BADMEMORY;
+        TRY(addInstr());
         getLastInstr().setOp(Opcode_e::mov_r64_rm64)
                       .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
                       .setR(stkTos(stkCurSize))
@@ -385,16 +377,18 @@ unsigned ObjectFactory::placeLabel() {
     return placeLabel(label) ? -1u : label;
 }
 
-bool ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
+ObjectFactory::result_e ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
     // TODO: Implement!
 
-    return true;
+    return lastResult = R_OK;
 }
 
-bool ObjectFactory::addInstr() {
-    TRY_B(code.append());
+ObjectFactory::result_e ObjectFactory::addInstr() {
+    if (code.append() || code[-1].ctor()) {
+        return lastResult = R_BADMEMORY;
+    }
 
-    return code[-1].ctor();
+    return lastResult = R_OK;
 }
 
 Instruction &ObjectFactory::getLastInstr() {
