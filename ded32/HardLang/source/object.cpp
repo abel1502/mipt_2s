@@ -69,22 +69,22 @@ void PackedInstruction::dtor() {
 
 void PackedInstruction::hexDump() const {
     for (unsigned i = 0; i < flags.getPrefCnt(); ++i) {
-        printf("%02X ", prefixes[i]);
+        printf("%02x ", prefixes[i]);
     }
 
     switch (flags.getType()) {
     case T_PLAIN:
         for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
-            printf("%02X", rawOp[i]);
+            printf("%02x", rawOp[i]);
         }
 
         break;
 
     case T_REX:
-        printf("%02X ", rex.rex);
+        printf("%02x ", rex.rex);
 
         for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
-            printf("%02X", rex.op[i]);
+            printf("%02x", rex.op[i]);
         }
 
         break;
@@ -102,32 +102,38 @@ void PackedInstruction::hexDump() const {
     printf(" ");
 
     if (flags.hasModrm()) {
-        printf("%02X ", modrm.full);
+        printf("%02x ", modrm.full);
     }
 
     if (flags.hasSib()) {
         assert(flags.hasModrm());
-        printf("%02X ", sib.full);
+        printf("%02x ", sib.full);
     }
 
+    #define ITH_BYTE_(NUM, I)  (unsigned)((NUM >> (I * 8)) & 0xFF)
+
     switch (flags.getDispSize()) {
+    case -1u:
+        break;
+
     case 0:
+        printf("%02x ", ITH_BYTE_(displacement, 0));
         break;
 
     case 1:
-        printf("%02X ",    (uint8_t) displacement);
+        printf("%02x%02x ", ITH_BYTE_(displacement, 0), ITH_BYTE_(displacement, 1));
         break;
 
     case 2:
-        printf("%04X ",    (uint16_t)displacement);
+        printf("%02x%02x%02x%02x ", ITH_BYTE_(displacement, 0), ITH_BYTE_(displacement, 1),
+                                    ITH_BYTE_(displacement, 2), ITH_BYTE_(displacement, 3));
         break;
 
-    case 4:
-        printf("%08X ",    (uint32_t)displacement);
-        break;
-
-    case 8:
-        printf("%016llX ", (uint64_t)displacement);
+    case 3:
+        printf("%02x%02x%02x%02x%02x%02x%02x%02x ", ITH_BYTE_(displacement, 0), ITH_BYTE_(displacement, 1),
+                                                    ITH_BYTE_(displacement, 2), ITH_BYTE_(displacement, 3),
+                                                    ITH_BYTE_(displacement, 4), ITH_BYTE_(displacement, 5),
+                                                    ITH_BYTE_(displacement, 6), ITH_BYTE_(displacement, 7));
         break;
 
     default:
@@ -136,29 +142,35 @@ void PackedInstruction::hexDump() const {
     }
 
     switch (flags.getImmSize()) {
+    case -1u:
+        break;
+
     case 0:
+        printf("%02x ", ITH_BYTE_(immediate, 0));
         break;
 
     case 1:
-        printf("%02X ",    (uint8_t) immediate);
+        printf("%02x%02x ", ITH_BYTE_(immediate, 0), ITH_BYTE_(immediate, 1));
         break;
 
     case 2:
-        printf("%04X ",    (uint16_t)immediate);
+        printf("%02x%02x%02x%02x ", ITH_BYTE_(immediate, 0), ITH_BYTE_(immediate, 1),
+                                    ITH_BYTE_(immediate, 2), ITH_BYTE_(immediate, 3));
         break;
 
-    case 4:
-        printf("%08X ",    (uint32_t)immediate);
-        break;
-
-    case 8:
-        printf("%016llX ", (uint64_t)immediate);
+    case 3:
+        printf("%02x%02x%02x%02x%02x%02x%02x%02x ", ITH_BYTE_(immediate, 0), ITH_BYTE_(immediate, 1),
+                                                    ITH_BYTE_(immediate, 2), ITH_BYTE_(immediate, 3),
+                                                    ITH_BYTE_(immediate, 4), ITH_BYTE_(immediate, 5),
+                                                    ITH_BYTE_(immediate, 6), ITH_BYTE_(immediate, 7));
         break;
 
     default:
         ERR("Wrong immediate size");
         abort();
     }
+
+    #undef ITH_BYTE_
 
     printf("\n");
 }

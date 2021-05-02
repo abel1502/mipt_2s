@@ -127,7 +127,7 @@ struct PackedInstruction {
         }
 
         inline unsigned getDispSize() const {
-            return hasDisp() ? dispSize : 0;
+            return hasDisp() ? dispSize : -1u;
         }
 
         inline bool hasImm() const {
@@ -135,7 +135,7 @@ struct PackedInstruction {
         }
 
         inline unsigned getImmSize() const {
-            return hasImm() ? immSize : 0;
+            return hasImm() ? immSize : -1u;
         }
 
         inline bool hasModrm() const {
@@ -166,16 +166,16 @@ struct PackedInstruction {
         }
 
         inline void setDispSize(unsigned new_dispSize) {
-            assert((new_dispSize & (new_dispSize - 1)) == 0);
+            assert(new_dispSize < 4);
 
-            disp = new_dispSize != 0;
+            disp = new_dispSize != -1u;
             dispSize = new_dispSize;
         }
 
         inline void setImmSize(unsigned new_immSize) {
-            assert((new_immSize & (new_immSize - 1)) == 0);
+            assert(new_immSize < 4);
 
-            imm = new_immSize != 0;
+            imm = new_immSize != -1u;
             immSize = new_immSize;
         }
 
@@ -208,8 +208,6 @@ struct PackedInstruction {
     uint64_t immediate;
 
     //--------------------------------------------------------------------------------
-
-    //inline void setModrmRm();
 
     bool setPrefixes(const uint8_t new_prefixes[4]);  // The unused ones have to be null
 
