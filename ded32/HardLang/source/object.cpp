@@ -175,4 +175,27 @@ void PackedInstruction::hexDump() const {
     printf("\n");
 }
 
+bool PackedInstruction::compile(char **dest) const {
+    char *oldDest = *dest;
+}
+
+//================================================================================
+
+unsigned ObjectFactory::reserveLabel() {
+    return nextLabelIdx++;
+}
+
+unsigned ObjectFactory::placeLabel() {
+    unsigned label = reserveLabel();
+
+    return placeLabel(label) ? -1u : label;
+}
+
+bool ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
+    // TODO: Implement!!!
+
+    return true;
+}
+
+
 }

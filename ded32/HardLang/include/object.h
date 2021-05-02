@@ -224,6 +224,10 @@ struct PackedInstruction {
 
     void hexDump() const;
 
+    unsigned getLength() const;
+
+    bool compile(char **dest) const;
+
 };
 
 
@@ -246,12 +250,23 @@ public:
 
     void dtor();
 
+    //--------------------------------------------------------------------------------
 
+    unsigned reserveLabel();
+
+    /// Returns -1u on failure
+    unsigned placeLabel();
+
+    bool placeLabel(unsigned reservedLabelIdx);
+
+    //--------------------------------------------------------------------------------
 
     result_e compile(FILE *ofile) const;
 
 private:
     Vector<Instruction> code;
+
+    unsigned nextLabelIdx;
 
 };
 
