@@ -155,7 +155,7 @@ bool Var::reference(Instruction &instr, VarInfo vi) {
     //fprintf(ofile, "[rz+%u]", vi.offset);
 
     // TODO: Maybe optimize to DISP_8?
-    instr.setRmSib(instr.REG_SP, Instruction::mode_t::DISP_32).setDisp(vi.offset);
+    instr.setRmSib(REG_SP, Instruction::mode_t::DISP_32).setDisp(vi.offset);
 
     return false;
 }
@@ -164,16 +164,16 @@ const TypeSpec Var::getType() const {
     return ts;
 }
 
-Instruction::size_e Var::getSize() const {
+size_e Var::getSize() const {
     switch (ts.type) {
-    case T_INT4:
-        return Instruction::SIZE_D;
+    case ts.T_INT4:
+        return SIZE_D;
 
-    case T_INT8:
-        return Instruction::SIZE_Q;
+    case ts.T_INT8:
+        return SIZE_Q;
 
-    case T_DBL:
-        return Instruction::SIZE_MMX;
+    case ts.T_DBL:
+        return SIZE_MMX;
 
     case ts.T_VOID:
     default:
@@ -214,7 +214,7 @@ VarInfo Scope::getInfo(const Token *name) const {
     }
 
     if (!cur)
-        return {(uint32_t)-1, nullptr};
+        return {0, nullptr};
 
     return cur->vars.get(name->getStr(), name->getLength());
 }
@@ -240,11 +240,9 @@ bool Scope::addVar(const Var *var) {
         return true;
     }
 
-    uint32_t offset = curOffset;
+    curOffset -= var->getType().getSize();
 
-    curOffset += var->getType().getSize();
-
-    TRY_B(vars.set(var->getName()->getStr(), var->getName()->getLength(), {offset, var}));
+    TRY_B(vars.set(var->getName()->getStr(), var->getName()->getLength(), {curOffset, var}));
 
     return false;
 }
@@ -260,7 +258,7 @@ uint32_t Scope::getFrameSize() const {
     const Scope *cur = this;
 
     while (cur) {
-        result += cur->curOffset;
+        result += -(cur->curOffset);
 
         cur = cur->parent;
     }
@@ -413,7 +411,7 @@ bool Expression::setOp(unsigned ind, Op_e op) {
     return false;
 }
 
-void Expression::simplifySingleChild() {
+void Expression::simplifySingleChild() {  // TODO: Maybe rewrite with C++ features...
     if (!isPolyOp() || children.getSize() != 1)
         return;
 
@@ -732,13 +730,13 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
     TRY_B(exprType.type == TypeSpec::T_VOID);
 
-    if (am != Expression::AM_EQ) {
+    if (am != AM_EQ) {
         TRY_B(children[0].compile(ofile, scope, prog));
     }
 
     TRY_B(children[1].compile(ofile, scope, prog));
 
-    if (am != Expression::AM_EQ) {
+    if (am != AM_EQ) {
         switch (am) {
         case AM_ADDEQ:
             fprintf(ofile, "add ");
@@ -762,7 +760,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
             TRY_BC(exprType.type == TypeSpec::T_DBL, ERR("Remainder can't be computed for non-integral types"));
             break;
 
-        case OP_EQ:
+        case AM_EQ:
         default:
             assert(false);
             return true;

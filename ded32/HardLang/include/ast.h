@@ -72,7 +72,7 @@ struct TypeSpec {
 class Var;
 
 struct VarInfo {
-    uint32_t offset;  // TODO: offsets are negative this time
+    int32_t offset;  /// TODO: offsets are negative this time
     const Var *var;
 };
 
@@ -98,7 +98,7 @@ public:
 
     const TypeSpec getType() const;
 
-    Instruction::size_e getSize() const;
+    size_e getSize() const;
 
     const Token *getName() const;
 
@@ -139,7 +139,7 @@ public:
 private:
 
     const Scope *parent;
-    uint32_t curOffset;
+    int32_t curOffset;
     Hashtable<VarInfo> vars;
 
 };
