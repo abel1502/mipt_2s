@@ -46,3 +46,6 @@ DEF_KWD(ELSE,   "else")
 DEF_KWD(INT4,   "int4")
 DEF_KWD(INT8,   "int8")
 DEF_KWD(WHILE,  "while")
+DEF_KWD(WHILE,  "export")
+DEF_KWD(WHILE,  "import")
+
