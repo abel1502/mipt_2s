@@ -163,13 +163,27 @@ int main(int argc, char **argv) {
     if (doReconstruct) {
         prog.reconstruct(ofile);
     } else {
-        if (prog.compile(ofile)) {
+        ObjectFactory of{};
+
+        if (of.ctor()) {  // TODO: Switch
+            ERR("System error");
+
+            return 2;
+        }
+
+        if (prog.compile(of)) {
             ERR("Failed to compile the program.\n"
                 "(If there aren't any more precise error messages above,\n"
                 " this might be due to a system error. In that case you\n"
                 " should try to rerun the program, check that the output\n"
                 " file is writable and if that doesn't help, report the\n"
                 " problem at github.com/abel1502/mipt_1s )");
+
+            return 3;
+        }
+
+        if (of.compile(ofile)) {  // TODO: Also a switch
+            ERR("Failed to write the compiled code to the output object file");
 
             return 3;
         }
@@ -213,7 +227,17 @@ void test() {
 
     REQUIRE(!instr.compile(pi));
 
+    char buf[32] = "";
+    char *cur = buf;
+
+    REQUIRE(!pi.compile(&cur));
+
     pi.hexDump();
+
+    for (char *i = buf; i < cur; ++i) {
+        printf("%02hhx", (unsigned char)*i);
+    }
+    printf("\n");
 
     pi.dtor();
     instr.dtor();

@@ -177,6 +177,78 @@ void PackedInstruction::hexDump() const {
 
 bool PackedInstruction::compile(char **dest) const {
     char *oldDest = *dest;
+
+    #define NEXT_BYTE_  *(*dest)++
+
+    for (unsigned i = 0; i < flags.getPrefCnt(); ++i) {
+        NEXT_BYTE_ = prefixes[i];
+    }
+
+    switch (flags.getType()) {
+    case T_PLAIN:
+        for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
+            NEXT_BYTE_ = rawOp[i];
+        }
+
+        break;
+
+    case T_REX:
+        NEXT_BYTE_ = rex.rex;
+
+        for (unsigned i = 0; i < flags.getOpcodeSize(); ++i) {
+            NEXT_BYTE_ = rex.op[i];
+        }
+
+        break;
+
+    case T_VEX2:
+    case T_VEX3:
+        ERR("Can't yet compile VEX instructions");
+
+        goto err;
+
+    default:
+        ERR("Wrong instruction type");
+        abort();
+    }
+
+    if (flags.hasModrm()) {
+        NEXT_BYTE_ = modrm.full;
+    }
+
+    if (flags.hasSib()) {
+        assert(flags.hasModrm());
+
+        NEXT_BYTE_ = sib.full;
+    }
+
+    #define ITH_BYTE_(NUM, I)  (unsigned)((NUM >> (I * 8)) & 0xFF)
+
+    if (flags.getDispSize() != -1u) {
+        unsigned dispSize = 1 << flags.getDispSize();
+
+        for (unsigned i = 0; i < dispSize; ++i) {
+            NEXT_BYTE_ = ITH_BYTE_(displacement, i);
+        }
+    }
+
+    if (flags.getImmSize() != -1u) {
+        unsigned immSize = 1 << flags.getImmSize();
+
+        for (unsigned i = 0; i < immSize; ++i) {
+            NEXT_BYTE_ = ITH_BYTE_(immediate, i);
+        }
+    }
+
+    #undef ITH_BYTE_
+
+    #undef NEXT_BYTE_
+
+    return false;
+
+err:
+    *dest = oldDest;
+    return true;
 }
 
 //================================================================================
@@ -192,7 +264,7 @@ unsigned ObjectFactory::placeLabel() {
 }
 
 bool ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
-    // TODO: Implement!!!
+    // TODO: Implement!
 
     return true;
 }

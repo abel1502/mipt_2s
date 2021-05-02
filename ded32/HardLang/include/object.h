@@ -259,6 +259,8 @@ public:
 
     bool placeLabel(unsigned reservedLabelIdx);
 
+    // TODO: Ways to reference a label in an instruction
+
     //--------------------------------------------------------------------------------
 
     result_e compile(FILE *ofile) const;

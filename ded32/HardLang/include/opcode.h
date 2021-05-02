@@ -253,6 +253,8 @@ private:
 
     // TODO: Symbol references (for disp, for imm and for the instruction's address)
 
+    //--------------------------------------------------------------------------------
+
     Instruction &setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale);
 
     bool compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize,
