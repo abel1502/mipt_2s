@@ -104,6 +104,12 @@ bool Instruction::ctor() {
 void Instruction::dtor() {
 }
 
+bool Instruction::compile(PackedInstruction &pi, unsigned limit) const {
+    TRY_B(getLength() > limit);
+
+    return compile(pi);
+}
+
 bool Instruction::compile(PackedInstruction &pi) const {
     // TODO: !!!!!!!!!
     TRY_B(pi.ctor());

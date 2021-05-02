@@ -234,6 +234,11 @@ struct PackedInstruction {
 
 class ObjectFactory {
 public:
+    static constexpr unsigned REGSTK_SIZE = 8;
+    static constexpr reg_e REGSTK_REGS[REGSTK_SIZE]  = {
+        REG_10, REG_11, REG_12, REG_13, REG_14, REG_15, REG_SI, REG_DI,
+    };
+
     #undef R_OK
 
     enum result_e {
@@ -251,6 +256,24 @@ public:
 
     void dtor();
 
+    inline result_e getLastResult() const {
+        return lastResult;
+    }
+
+    //--------------------------------------------------------------------------------
+
+    reg_e stkTos(unsigned depth=0) const;
+
+    ObjectFactory::result_e stkPush();
+
+    ObjectFactory::result_e stkPop();
+
+    /// Move the stack's contents to the memory
+    ObjectFactory::result_e stkFlush();
+
+    /// Move the stack's contents to the registers, ensuring at least req being pulled
+    ObjectFactory::result_e stkPull(unsigned req = 0);
+
     //--------------------------------------------------------------------------------
 
     unsigned reserveLabel();
@@ -262,14 +285,23 @@ public:
 
     // TODO: Ways to reference a label in an instruction
 
+    bool addInstr();
+
+    Instruction &getLastInstr();
+
     //--------------------------------------------------------------------------------
 
     result_e compile(FILE *ofile) const;
 
 private:
+    mutable result_e lastResult;
+
     Vector<Instruction> code;
 
     unsigned nextLabelIdx;
+
+    unsigned stkCurTos;
+    unsigned stkCurSize;
 
 };
 

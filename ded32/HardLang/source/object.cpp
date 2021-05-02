@@ -253,6 +253,128 @@ err:
 
 //================================================================================
 
+ObjectFactory::result_e ObjectFactory::ctor() {
+    lastResult = R_OK;
+
+    if (code.ctor()) {
+        ERR("Couldn't init underlying Vector");
+        return lastResult = R_BADMEMORY;
+    }
+
+    nextLabelIdx = 0;
+    stkCurTos = 0;
+    stkCurSize = 0;
+
+    return lastResult = R_OK;
+}
+
+void ObjectFactory::dtor() {
+    code.dtor();
+}
+
+reg_e ObjectFactory::stkTos(unsigned depth) const {
+    REQUIRE(depth <= stkCurSize);
+
+    return REGSTK_REGS[(REGSTK_SIZE + stkCurTos - depth) % REGSTK_SIZE];
+}
+
+ObjectFactory::result_e ObjectFactory::stkPush() {
+    if (stkCurSize == REGSTK_SIZE) {
+        if (addInstr())
+            return lastResult = R_BADMEMORY;
+        getLastInstr().setOp(Opcode_e::add_rm64_imm32)
+                      .setRmReg(REG_BP)
+                      .setImm(8 * REGSTK_SIZE / 2);
+
+        for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
+            if (addInstr())
+                return lastResult = R_BADMEMORY;
+            getLastInstr().setOp(Opcode_e::mov_rm64_r64)
+                          .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
+                          .setR(stkTos(REGSTK_SIZE - i))
+                          .setDisp(8 * (i - REGSTK_SIZE / 2));
+        }
+
+        stkCurSize = REGSTK_SIZE / 2;
+    }
+
+    stkCurTos = (stkCurTos + 1) % REGSTK_SIZE;
+
+    return lastResult = R_OK;
+}
+
+ObjectFactory::result_e ObjectFactory::stkPop() {
+    if (stkCurSize == 0) {
+        if (addInstr())
+            return lastResult = R_BADMEMORY;
+        getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
+                      .setRmReg(REG_BP)
+                      .setImm(8 * REGSTK_SIZE / 2);
+
+        for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
+            if (addInstr())
+                return lastResult = R_BADMEMORY;
+            getLastInstr().setOp(Opcode_e::mov_r64_rm64)
+                          .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
+                          .setR(stkTos(REGSTK_SIZE - i))
+                          .setDisp(8 * (i - REGSTK_SIZE / 2));
+        }
+
+        stkCurSize = REGSTK_SIZE / 2;
+    }
+
+    stkCurTos = (REGSTK_SIZE + stkCurTos - 1) % REGSTK_SIZE;
+
+    return lastResult = R_OK;
+}
+
+ObjectFactory::result_e ObjectFactory::stkFlush() {
+    if (stkCurSize == 0)
+        return lastResult = R_OK;
+
+    if (addInstr())
+        return lastResult = R_BADMEMORY;
+    getLastInstr().setOp(Opcode_e::add_rm64_imm32)
+                  .setRmReg(REG_BP)
+                  .setImm(8 * stkCurSize);
+
+    for (unsigned i = 0; i < stkCurSize; ++i) {
+        if (addInstr())
+            return lastResult = R_BADMEMORY;
+        getLastInstr().setOp(Opcode_e::mov_rm64_r64)
+                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
+                      .setR(stkTos(stkCurSize - i))
+                      .setDisp(8 * (i - stkCurSize));
+    }
+
+    stkCurSize = 0;
+    stkCurTos = 0;  // This allows to use flushing as a way to align computation stacks between two separate code segements
+
+    return lastResult = R_OK;
+}
+
+ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
+    if (stkCurSize >= req)
+        return lastResult = R_OK;
+
+    if (addInstr())
+        return lastResult = R_BADMEMORY;
+    getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
+                  .setRmReg(REG_BP)
+                  .setImm(8 * (req - stkCurSize));
+
+    for (; stkCurSize < req; ++stkCurSize) {
+        if (addInstr())
+            return lastResult = R_BADMEMORY;
+        getLastInstr().setOp(Opcode_e::mov_r64_rm64)
+                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
+                      .setR(stkTos(stkCurSize))
+                      .setDisp(-8 * stkCurSize);
+    }
+
+    return lastResult = R_OK;
+}
+
 unsigned ObjectFactory::reserveLabel() {
     return nextLabelIdx++;
 }
@@ -269,5 +391,16 @@ bool ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
     return true;
 }
 
+bool ObjectFactory::addInstr() {
+    TRY_B(code.append());
+
+    return code[-1].ctor();
+}
+
+Instruction &ObjectFactory::getLastInstr() {
+    REQUIRE(code.getSize() > 0);
+
+    return code[-1];
+}
 
 }

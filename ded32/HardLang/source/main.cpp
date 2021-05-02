@@ -205,18 +205,18 @@ void test() {
     REQUIRE(!instr.ctor());
 
     /*instr.setOp(Opcode_e::mov_rm64_r64)
-         .setRmMemReg(instr.REG_B, Instruction::mode_t::DISP_8)
-         .setR(instr.REG_A)
+         .setRmMemReg(REG_B, Instruction::mode_t::DISP_8)
+         .setR(REG_A)
          .setDisp(-123);*/
 
     /*instr.setOp(Opcode_e::lea_r32_m)
-         .setRmSib(instr.REG_SI, instr.REG_B, instr.SCALE_4, Instruction::mode_t::DISP_8)
-         .setR(instr.REG_A)
+         .setRmSib(REG_SI, REG_B, instr.SCALE_4, Instruction::mode_t::DISP_8)
+         .setR(REG_A)
          .setDisp(5);*/
 
     instr.setOp(Opcode_e::lea_r32_m)
          .setRmMemRip()
-         .setR(instr.REG_A)
+         .setR(REG_A)
          .setDisp(14);
 
     printf("(%u bytes)\n", instr.getLength());
@@ -225,7 +225,7 @@ void test() {
 
     REQUIRE(!pi.ctor());
 
-    REQUIRE(!instr.compile(pi));
+    REQUIRE(!instr.compile(pi, 32));
 
     char buf[32] = "";
     char *cur = buf;
