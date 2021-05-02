@@ -131,6 +131,10 @@ public:
             int64_t  val_q;
             uint64_t val_qu;
         };
+
+        inline unsigned getLength(unsigned size) const {
+            return size == -1u ? 0 : 1 << size;
+        }
     };
 
     struct OperandDisp {
@@ -138,6 +142,10 @@ public:
             int64_t  val_q;
             uint64_t val_qu;
         };
+
+        inline unsigned getLength(unsigned size) const {
+            return size == -1u ? 0 : 1 << size;
+        }
     };
 
     struct OperandR {
@@ -149,6 +157,10 @@ public:
 
         bool writeModRm(modrm_t &modrm) const;
         bool writeRex(rex_t &rex) const;
+
+        inline constexpr unsigned getLength(unsigned) const {
+            return 0;
+        }
     };
 
     struct OperandRM {
@@ -166,6 +178,10 @@ public:
 
         bool writeModRm(modrm_t &modrm, sib_t &sib, bool &hasSib) const;
         bool writeRex(rex_t &rex) const;
+
+        inline unsigned getLength(unsigned size) const {
+            return size == -1u ? 0 : mode.mode != mode.MODE_MEM_SIB ? 1 : 2;
+        }
     };
 
     //--------------------------------------------------------------------------------
@@ -221,6 +237,8 @@ public:
         removed = true;
     }
 
+    unsigned getLength() const;
+
     bool compile(PackedInstruction &pi) const;
 
 private:
@@ -237,8 +255,14 @@ private:
 
     Instruction &setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale);
 
-    bool compile(PackedInstruction &pi, unsigned rmsize, unsigned rsize, unsigned dispsize, unsigned immsize,
+    bool compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize,
                  unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const;
+
+    unsigned getLength(unsigned prefSize, unsigned opSize, unsigned rmSize,
+                       unsigned rSize, unsigned dispSize, unsigned immSize) const;
+
+    bool needsRex(unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const;
+
 };
 
 }

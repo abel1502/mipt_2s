@@ -311,6 +311,48 @@ unsigned Instruction::getLength() const {
     return -1;
 }
 
+unsigned Instruction::getLength(unsigned prefSize, unsigned opSize, unsigned rmSize,
+                                unsigned rSize, unsigned dispSize, unsigned immSize) const {
+    unsigned length = 0;
+
+    length += prefSize + opSize;
+
+    if (needsRex(rmSize, rSize, dispSize, immSize)) {
+        length += 1;
+    }
+
+    length +=  rm.getLength(  rmSize)
+           +    r.getLength(   rSize)
+           + disp.getLength(dispSize)
+           +  imm.getLength( immSize);
+
+    if (rmSize != -1u) {
+        switch (rm.mode.disp) {
+        case rm.mode.DISP_NONE:
+            break;
+
+        case rm.mode.DISP_8:
+            length += 1;
+            break;
+
+        case rm.mode.DISP_32:
+            length += 4;
+            break;
+
+        default:
+            ERR("Shouldn't be reachable");
+            abort();
+        }
+    }
+
+    return length;
+}
+
+bool Instruction::needsRex(unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const {
+    return (rmSize != -1u && rm.usesRexReg()) ||
+           (rSize  != -1u &&  r.usesRexReg()) ||
+           ((rmSize == SIZE_Q || rSize == SIZE_Q || dispSize == SIZE_Q || immSize == SIZE_Q) /* TODO: && not default 64 */);
+}
 
 }
 

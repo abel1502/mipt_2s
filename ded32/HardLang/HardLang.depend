@@ -65,7 +65,7 @@
 
 1618512888 source:d:\workspace\.mipt\s2\ded32\hardlang\source\fnv1a.asm
 
-1619778558 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
+1619783882 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
 	<cstdio>
 	<cstdlib>
 	<cassert>
@@ -130,10 +130,10 @@
 
 1608477839 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
 
-1619778367 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+1619785765 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
 	"object.h"
 
-1619778500 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+1619784728 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
 	<cstdint>
 	<cstdio>
 	<immintrin.h>
@@ -141,16 +141,18 @@
 	"vector.h"
 	"opcode.h"
 
-1619777971 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
+1619783016 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
 	"general.h"
 	"object.h"
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
 
-1619778536 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
+1619784535 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
 	"opcode.h"
 	<initializer_list>
 	<cassert>
+	"opcodes.dslctx.h"
+	"opcodes.dsl.h"
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
 
