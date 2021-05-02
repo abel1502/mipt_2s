@@ -62,6 +62,7 @@
 		<Unit filename="include/lexer.h" />
 		<Unit filename="include/object.h" />
 		<Unit filename="include/opcode.h" />
+		<Unit filename="include/opcode_enums.h" />
 		<Unit filename="include/parser.h" />
 		<Unit filename="include/vector.h" />
 		<Unit filename="include/vtable.h" />

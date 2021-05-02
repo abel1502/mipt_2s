@@ -8,6 +8,7 @@
 #include "general.h"
 #include "vector.h"
 #include "opcode.h"
+#include "opcode_enums.h"
 
 
 namespace abel {
