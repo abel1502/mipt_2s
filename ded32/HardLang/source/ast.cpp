@@ -1976,11 +1976,13 @@ bool Expression::VMIN(VarRef, compile)(ObjectFactory &obj, Scope *scope, const P
 }
 
 bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
+    // TODO: Special handling for export and import!!!
+
     TypeSpec exprType{};
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
 
     if (name->getLength() >= 1 && name->getStr()[0] == '_') {
-        return compilePseudofunc(ofile, scope, prog);
+        return compilePseudofunc(obj, scope, prog);
     }
 
     const Function *func = prog->getFunction(name);
@@ -2006,8 +2008,10 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
 
         assert(childMask != TypeSpec::VoidMask);
 
-        children[i].compile(ofile, scope, prog);
+        children[i].compile(obj, scope, prog);
     }
+
+    // TODO: Resume from here
 
     fprintf(ofile,
             "push dwl:rz\n"
