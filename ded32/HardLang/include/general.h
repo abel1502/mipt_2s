@@ -91,6 +91,12 @@
     }
 
 
+#define NODEFAULT                       \
+    default:                            \
+        ERR("Shouldn't be reachable");  \
+        abort();
+
+
 extern int verbosity;
 
 void err_(const char *funcName, int lineNo, const char *msg, ...);

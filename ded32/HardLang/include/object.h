@@ -274,6 +274,10 @@ public:
     /// Move the stack's contents to the registers, ensuring at least req being pulled
     ObjectFactory::result_e stkPull(unsigned req = 0);
 
+    inline bool stkIsEmpty() const {
+        return stkCurSize == 0;
+    }
+
     //--------------------------------------------------------------------------------
 
     unsigned reserveLabel();

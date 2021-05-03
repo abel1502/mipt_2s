@@ -55,14 +55,12 @@ enum size_e {
     #undef SIZE_W
     #undef SIZE_D
     #undef SIZE_Q
-    #undef SIZE_MMX
     #undef SIZE_XMM
 
     SIZE_B,
     SIZE_W,
     SIZE_D,
     SIZE_Q,
-    SIZE_MMX,
     SIZE_XMM,
 };
 
@@ -77,6 +75,17 @@ enum scale_e {
     SCALE_4 = 0b10,
     SCALE_8 = 0b11,
 };
+
+/*enum cmp_e {
+    EQ_OQ   = 0,  ///<  A  = B  -
+    LT_OS   = 1,  ///<  A <  B  -
+    LE_OS   = 2,  ///<  A <= B  -
+    UNORD_Q = 3,  ///<  false   +
+    NEQ_UQ  = 4,  ///<  A != B  +
+    NLT_US  = 5,  ///<  A >= B  +
+    NLE_US  = 6,  ///<  A  = B  +
+    ORD_Q   = 7,  ///<  true    -
+};*/
 
 }
 

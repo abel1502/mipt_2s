@@ -74,8 +74,7 @@ void TypeSpec::reconstruct(FILE *ofile) const {
         fprintf(ofile, "???:");
         ERR("Void is not a valid type");
         // FALLTHROUGH
-    default:
-        assert(false);
+    NODEFAULT
     }
 }
 
@@ -93,12 +92,8 @@ uint32_t TypeSpec::getSize() const {
     case TypeSpec::T_VOID:
         return 0;  // TODO: Fail?
 
-    default:
-        break;
+    NODEFAULT
     }
-
-    assert(false);
-    return -1;
 }
 
 TypeSpec::Mask TypeSpec::getMask() const {
@@ -173,12 +168,10 @@ size_e Var::getSize() const {
         return SIZE_Q;
 
     case ts.T_DBL:
-        return SIZE_MMX;
+        return SIZE_XMM;
 
     case ts.T_VOID:
-    default:
-        ERR("Shouldn't be reachable");
-        abort();
+    NODEFAULT
     }
 }
 
@@ -459,14 +452,37 @@ bool Expression::compile(ObjectFactory &obj, Scope *scope, const Program *prog) 
 bool Expression::compileVarRecepient(ObjectFactory &obj, Scope *scope, const Program *) {
     assert(isVarRef());
 
-    fprintf(ofile,
-            "dup\n"  // TODO: Maybe not dup here
-            "pop ");
+    obj.stkPull(1);
+
+    TRY_B(obj.addInstr());
 
     VarInfo vi = scope->getInfo(name);
-    TRY_B(Var::compile(ofile, vi));
+    switch (vi.var->getSize()) {
+    case SIZE_B:
+        obj.getLastInstr().setOp(Opcode_e::mov_rm8_r8);
+        break;
 
-    fprintf(ofile, "\n");
+    case SIZE_W:
+        obj.getLastInstr().setOp(Opcode_e::mov_rm16_r16);
+        break;
+
+    case SIZE_D:
+        obj.getLastInstr().setOp(Opcode_e::mov_rm32_r32);
+        break;
+
+    case SIZE_Q:
+    case SIZE_XMM:  // XMM always holds a single double-precision value, and should in fact be placed in the regular register stack most of the time
+        obj.getLastInstr().setOp(Opcode_e::mov_rm64_r64);
+        break;
+
+    NODEFAULT
+    }
+
+    TRY_B(Var::reference(obj.getLastInstr(), vi));
+
+    obj.getLastInstr().setR(obj.stkTos(1));
+
+    // obj.stkPop();  // Intentionally not called, as the value is supposed to be left on the stack
 
     return false;
 }
@@ -514,10 +530,21 @@ bool Expression::compilePseudofunc(ObjectFactory &obj, Scope *scope, const Progr
         }
 
     #define PF_COMPILE_CHILD(IND) \
-        TRY_B(children[IND].compile(ofile, scope, prog));
+        TRY_B(children[IND].compile(obj, scope, prog));
 
-    #define PF_O(CODE, ...) \
-        fprintf(ofile, CODE, ##__VA_ARGS__);
+    // TODO: Maybe encapsulate tos-push-pop, addInstr and getLastInstr
+
+    #define PF_TOS      obj.stkTos
+    #define PF_PUSH     obj.stkPush
+    #define PF_POP      obj.stkPop
+    #define PF_PULL     obj.stkPull
+    #define PF_FLUSH    obj.stkFlush
+
+    #define PF_ADDINSTR() \
+        TRY_B(obj.addInstr())
+
+    #define PF_LASTINSTR() \
+        obj.getLastInstr()
 
     #define DEF_PFUNC(RTYPECAP, RTYPEWORD, NAME, COMPILECODE)               \
         if (sizeof(#NAME) == name->getLength() &&                           \
@@ -537,7 +564,13 @@ bool Expression::compilePseudofunc(ObjectFactory &obj, Scope *scope, const Progr
     #undef PF_VERIFY_ARGCNT
     #undef PF_REQUIRE_CHILD_TYPE
     #undef PF_COMPILE_CHILD
-    #undef PF_O
+    #undef PF_TOS
+    #undef PF_PUSH
+    #undef PF_POP
+    #undef PF_PULL
+    #undef PF_FLUSH
+    #undef PF_ADDINSTR
+    #undef PF_LASTINSTR
 }
 
 #define DEF_TYPE(NAME) \
@@ -731,46 +764,365 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
     TRY_B(exprType.type == TypeSpec::T_VOID);
 
     if (am != AM_EQ) {
-        TRY_B(children[0].compile(ofile, scope, prog));
+        TRY_B(children[0].compile(obj, scope, prog));
     }
 
-    TRY_B(children[1].compile(ofile, scope, prog));
+    TRY_B(children[1].compile(obj, scope, prog));
 
     if (am != AM_EQ) {
+        obj.stkPull(2);
+
         switch (am) {
         case AM_ADDEQ:
-            fprintf(ofile, "add ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::add_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::add_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::addsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case AM_SUBEQ:
-            fprintf(ofile, "sub ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::sub_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::sub_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::subsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case AM_MULEQ:
-            fprintf(ofile, "mul ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::imul_r32_rm32)
+                    .setR(obj.stkTos(2))
+                    .setRmReg(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::imul_r64_rm64)
+                    .setR(obj.stkTos(2))
+                    .setRmReg(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mulsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case AM_DIVEQ:
-            fprintf(ofile, "div ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm32_r32)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm32)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_A);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm64_r64)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm64)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_A);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::divsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case AM_MODEQ:
-            fprintf(ofile, "mod ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm32_r32)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
 
-            TRY_BC(exprType.type == TypeSpec::T_DBL, ERR("Remainder can't be computed for non-integral types"));
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm32)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_D);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm64_r64)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm64)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_D);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                ERR("Remainder can't be computed for non-integral types");
+
+                return true;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case AM_EQ:
-        default:
-            assert(false);
-            return true;
+        NODEFAULT
         }
-
-        TRY_B(exprType.compile(ofile));
-        fprintf(ofile, "\n");
     }
 
-    TRY_B(children[0].compileVarRecepient(ofile, scope, prog));
+    TRY_B(children[0].compileVarRecepient(obj, scope, prog));
 
     exprType.dtor();
 
@@ -839,9 +1191,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             fprintf(ofile, "mod ");
             break;
 
-        default:
-            assert(false);
-            return true;
+        NODEFAULT
         }
 
         // For cmp's exprType is Int4, so we need the child's one
@@ -923,9 +1273,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
             fprintf(ofile, "d2l\n");  // TODO: Implement
             break;
 
-        default:
-            assert(false);
-            return true;
+        NODEFAULT
         }
         break;
 
@@ -948,9 +1296,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
             // Kind of works automatically
             break;
 
-        default:
-            assert(false);
-            return true;
+        NODEFAULT
         }
         break;
 
@@ -973,15 +1319,11 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_INT8:
             break;
 
-        default:
-            assert(false);
-            return true;
+        NODEFAULT
         }
         break;
 
-    default:
-        assert(false);
-        return true;
+    NODEFAULT
     }
 
     childType.dtor();
@@ -1017,9 +1359,7 @@ bool Expression::VMIN(Num, compile)(ObjectFactory &obj, Scope *, const Program *
 
         break;
 
-    default:
-        assert(false);
-        return true;
+    NODEFAULT
     }
 
     exprType.dtor();
@@ -1137,9 +1477,7 @@ void Expression::VMIN(Asgn, reconstruct)(FILE *ofile) const {
         fprintf(ofile, " %%= ");
         break;
 
-    default:
-        assert(false);
-        break;
+    NODEFAULT
     }
 
     children[1].reconstruct(ofile);
@@ -1196,9 +1534,7 @@ void Expression::VMIN(PolyOp, reconstruct)(FILE *ofile) const {
             fprintf(ofile, " %% ");
             break;
 
-        default:
-            assert(false);
-            return;
+        NODEFAULT
         }
 
         children[i].reconstruct(ofile);

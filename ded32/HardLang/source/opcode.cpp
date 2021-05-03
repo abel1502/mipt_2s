@@ -68,8 +68,7 @@ bool Instruction::OperandRM::writeModRm(modrm_t &modrm, sib_t &sib, bool &hasSib
 
         return false;
 
-    default:
-        break;
+    NODEFAULT
     }
 
     return true;
@@ -139,9 +138,7 @@ bool Instruction::compile(PackedInstruction &pi) const {
 
         #undef OPDEF
 
-    default:
-        ERR("Unknown opcode.");
-        abort();
+    NODEFAULT
     }
 
     return true;
@@ -214,9 +211,7 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize
             break;
 
         case rm.mode.DISP_NONE:
-        default:
-            ERR("Shouldn't be reachable");
-            abort();
+        NODEFAULT
         }
 
         pi.displacement = disp.val_qu;
@@ -309,9 +304,7 @@ unsigned Instruction::getLength() const {
 
         #undef OPDEF
 
-    default:
-        ERR("Unknown opcode.");
-        abort();
+    NODEFAULT
     }
 
     return -1;
@@ -345,9 +338,7 @@ unsigned Instruction::getLength(unsigned prefSize, unsigned opSize, unsigned rmS
             length += 4;
             break;
 
-        default:
-            ERR("Shouldn't be reachable");
-            abort();
+        NODEFAULT
         }
     }
 

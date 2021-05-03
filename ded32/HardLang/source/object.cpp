@@ -95,9 +95,7 @@ void PackedInstruction::hexDump() const {
     case T_VEX3:
         break;
 
-    default:
-        ERR("Wrong instruction type");
-        abort();
+    NODEFAULT
     }
     printf(" ");
 
@@ -136,9 +134,7 @@ void PackedInstruction::hexDump() const {
                                                     ITH_BYTE_(displacement, 6), ITH_BYTE_(displacement, 7));
         break;
 
-    default:
-        ERR("Wrong displacement size");
-        abort();
+    NODEFAULT
     }
 
     switch (flags.getImmSize()) {
@@ -165,9 +161,7 @@ void PackedInstruction::hexDump() const {
                                                     ITH_BYTE_(immediate, 6), ITH_BYTE_(immediate, 7));
         break;
 
-    default:
-        ERR("Wrong immediate size");
-        abort();
+    NODEFAULT
     }
 
     #undef ITH_BYTE_
@@ -207,9 +201,7 @@ bool PackedInstruction::compile(char **dest) const {
 
         goto err;
 
-    default:
-        ERR("Wrong instruction type");
-        abort();
+    NODEFAULT
     }
 
     if (flags.hasModrm()) {
