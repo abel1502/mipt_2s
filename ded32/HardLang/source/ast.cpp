@@ -1137,70 +1137,491 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
     TRY_B(exprType.type == TypeSpec::T_VOID);
 
-    TRY_B(children[0].compile(ofile, scope, prog));
+    TRY_B(children[0].compile(obj, scope, prog));
 
     for (unsigned i = 0; i + 1 < children.getSize(); i++) {
         // We do rely on all the operators being left-to-right evaluated, so
         // take caution when adding new ones that don't follow this rule
         // (such as **, for example)
 
-        TRY_B(children[i + 1].compile(ofile, scope, prog));
+        TRY_B(children[i + 1].compile(obj, scope, prog));
+
+        obj.stkPull(2);
 
         switch (ops[i]) {
+
+        #define CMP_OP_(SETFLAG)                                \
+            switch (exprType.getSize()) {                       \
+            case SIZE_D:                                        \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::cmp_rm32_r32)              \
+                    .setRmReg(obj.stkTos(2))                    \
+                    .setR(obj.stkTos(1));                       \
+                                                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::set##SETFLAG##_rm8)        \
+                    .setRmReg(obj.stkTos(2));                   \
+                                                                \
+                /* TODO: This may be unnecessary, but it */     \
+                /* compensates for the lack of || and && */     \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::and_rm64_imm32)            \
+                    .setRmReg(obj.stkTos(2))                    \
+                    .setImm(0xff);                              \
+                                                                \
+                obj.stkPop();                                   \
+                                                                \
+                break;                                          \
+                                                                \
+            case SIZE_Q:                                        \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::cmp_rm64_r64)              \
+                    .setRmReg(obj.stkTos(2))                    \
+                    .setR(obj.stkTos(1));                       \
+                                                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::set##SETFLAG##_rm8)        \
+                    .setRmReg(obj.stkTos(2));                   \
+                                                                \
+                /* TODO: same */                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::and_rm64_imm32)            \
+                    .setRmReg(obj.stkTos(2))                    \
+                    .setImm(0xff);                              \
+                                                                \
+                obj.stkPop();                                   \
+                                                                \
+                break;                                          \
+                                                                \
+            case SIZE_XMM:                                      \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::movd_rx_rm64)              \
+                    .setR(REG_A)                                \
+                    .setRmReg(obj.stkTos(2));                   \
+                                                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::movd_rx_rm64)              \
+                    .setR(REG_B)                                \
+                    .setRmReg(obj.stkTos(1));                   \
+                                                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::ucomisd_rx_rm64x)          \
+                    .setR(REG_A)                                \
+                    .setRmReg(REG_B);                           \
+                                                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::set##SETFLAG##_rm8)        \
+                    .setRmReg(obj.stkTos(2));                   \
+                                                                \
+                /* TODO: same */                                \
+                TRY_B(obj.addInstr());                          \
+                obj.getLastInstr()                              \
+                    .setOp(Opcode_e::and_rm64_imm32)            \
+                    .setRmReg(obj.stkTos(2))                    \
+                    .setImm(0xff);                              \
+                                                                \
+                obj.stkPop();                                   \
+                                                                \
+                break;                                          \
+                                                                \
+            case SIZE_B:                                        \
+            case SIZE_W:                                        \
+            NODEFAULT                                           \
+            }
+
         case OP_EQ:
-            fprintf(ofile, "ce ");
+            CMP_OP_(e);
+
             break;
 
         case OP_NEQ:
-            fprintf(ofile, "cne ");
+            CMP_OP_(ne);
+
             break;
 
         case OP_GEQ:
-            fprintf(ofile, "cge ");
+            CMP_OP_(ae);
+
             break;
 
         case OP_LEQ:
-            fprintf(ofile, "cle ");
+            CMP_OP_(be);
+
             break;
 
         case OP_LT:
-            fprintf(ofile, "cl ");
+            CMP_OP_(b);
+
             break;
 
         case OP_GT:
-            fprintf(ofile, "cg ");
+            CMP_OP_(a);
+
             break;
 
+        #undef CMP_OP_
+
         case OP_ADD:
-            fprintf(ofile, "add ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::add_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::add_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::addsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case OP_SUB:
-            fprintf(ofile, "sub ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::sub_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::sub_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::subsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case OP_MUL:
-            fprintf(ofile, "mul ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::imul_r32_rm32)
+                    .setR(obj.stkTos(2))
+                    .setRmReg(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::imul_r64_rm64)
+                    .setR(obj.stkTos(2))
+                    .setRmReg(obj.stkTos(1));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mulsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case OP_DIV:
-            fprintf(ofile, "div ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm32_r32)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm32)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_A);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm64_r64)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm64)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_A);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setR(REG_B)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::divsd_rx_rm64x)
+                    .setR(REG_A)
+                    .setRmReg(REG_B);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setR(REG_A)
+                    .setRmReg(obj.stkTos(2));
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         case OP_MOD:
-            fprintf(ofile, "mod ");
+            switch (exprType.getSize()) {
+            case SIZE_D:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm32_r32)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm32)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm32_r32)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_D);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_Q:
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::xor_rm64_r64)
+                    .setRmReg(REG_D)
+                    .setR(REG_D);
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(REG_A)
+                    .setR(obj.stkTos(2));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::idiv_rm64)
+                    .setRmReg(obj.stkTos(1));
+
+                TRY_B(obj.addInstr());
+                obj.getLastInstr()
+                    .setOp(Opcode_e::mov_rm64_r64)
+                    .setRmReg(obj.stkTos(2))
+                    .setR(REG_D);
+
+                obj.stkPop();
+
+                break;
+
+            case SIZE_XMM:
+                ERR("Remainder can't be computed for non-integral types");
+
+                return true;
+
+            case SIZE_B:
+            case SIZE_W:
+            NODEFAULT
+            }
+
             break;
 
         NODEFAULT
         }
 
-        // For cmp's exprType is Int4, so we need the child's one
+        // For cmp the exprType is Int4, so we need the child's one
         if (typeMask != children[i].typeMask) {
             TRY_B(exprType.ctor(children[i].typeMask));
         }
-
-        exprType.compile(ofile);
-        fprintf(ofile, "\n");
 
         // TODO: Eventually should change poly-comparison handling to the pythonic way.
         // TODO: For now, in fact, I should probably forbid a == b == c stuff at all

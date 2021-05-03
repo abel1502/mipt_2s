@@ -340,6 +340,8 @@ ObjectFactory::result_e ObjectFactory::stkFlush() {
 }
 
 ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
+    assert(req < REGSTK_SIZE); // TODO: Maybe do patches of 4?
+
     if (stkCurSize >= req)
         return lastResult = R_OK;
 
