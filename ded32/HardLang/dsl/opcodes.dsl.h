@@ -195,6 +195,24 @@ OPDEF(setnle_rm8,     B_(0x0F, 0x9F), SIZE_B,     -1,     -1,     -1, -1, {})
 OPDEF(int3,           {0xCC},     -1,     -1,     -1,     -1, -1, {})
 
 
+OPDEF(movsx_r16_rm8,  B_(0x0F, 0xBE), SIZE_B, SIZE_W,     -1,     -1, -1, {0x66})
+OPDEF(movsx_r32_rm8,  B_(0x0F, 0xBE), SIZE_B, SIZE_D,     -1,     -1, -1, {})
+OPDEF(movsx_r64_rm8,  B_(0x0F, 0xBE), SIZE_B, SIZE_Q,     -1,     -1, -1, {})
+
+OPDEF(movsx_r32_rm16, B_(0x0F, 0xBF), SIZE_W, SIZE_D,     -1,     -1, -1, {})
+OPDEF(movsx_r64_rm16, B_(0x0F, 0xBF), SIZE_W, SIZE_Q,     -1,     -1, -1, {})
+
+OPDEF(movsx_r64_rm32, {0x63}, SIZE_D, SIZE_Q,     -1,     -1, -1, {})
+
+
+OPDEF(movzx_r16_rm8,  B_(0x0F, 0xB6), SIZE_B, SIZE_W,     -1,     -1, -1, {0x66})
+OPDEF(movzx_r32_rm8,  B_(0x0F, 0xB6), SIZE_B, SIZE_D,     -1,     -1, -1, {})
+OPDEF(movzx_r64_rm8,  B_(0x0F, 0xB6), SIZE_B, SIZE_Q,     -1,     -1, -1, {})
+
+OPDEF(movzx_r32_rm16, B_(0x0F, 0xB7), SIZE_W, SIZE_D,     -1,     -1, -1, {})
+OPDEF(movzx_r64_rm16, B_(0x0F, 0xB7), SIZE_W, SIZE_Q,     -1,     -1, -1, {})
+
+
 // ucomisd is probably the preferable method of comparison
 
 // OPDEF(cmpsd_rx_rm64x_imm8,  B_(0xF2, 0x0F, 0xC2), SIZE_XMM, SIZE_XMM,       -1,   SIZE_B, -1, {})
@@ -232,8 +250,11 @@ OPDEF(cvtsd2si_r32_rm64x,   B_(0xF2, 0x0F, 0x2D), SIZE_XMM,   SIZE_D,       -1, 
 OPDEF(cvtsd2si_r64_rm64x,   B_(0xF2, 0x0F, 0x2D), SIZE_XMM,   SIZE_Q,       -1,       -1, -1, {})
 
 
-OPDEF(cvtsd2si_rx_rm32,     B_(0xF2, 0x0F, 0x2A),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {})
-OPDEF(cvtsd2si_rx_rm64,     B_(0xF2, 0x0F, 0x2A),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(cvtsi2sd_rx_rm32,     B_(0xF2, 0x0F, 0x2A),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(cvtsi2sd_rx_rm64,     B_(0xF2, 0x0F, 0x2A),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {})
+
+
+OPDEF(xorpd_rx_rm128x,      B_(0x66, 0x0F, 0x57), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
 
 
 /* ? rcl rcr rol ror shl shr sal sar */

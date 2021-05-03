@@ -1639,10 +1639,58 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
     TRY_B(exprType.type == TypeSpec::T_VOID);
 
-    TRY_B(children[0].compile(ofile, scope, prog));
-    fprintf(ofile, "neg ");
-    TRY_B(exprType.compile(ofile));
-    fprintf(ofile, "\n");
+    TRY_B(children[0].compile(obj, scope, prog));
+
+    obj.stkPull(1);
+
+    switch (exprType.getSize()) {
+    case SIZE_D:
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::neg_rm32)
+            .setRmReg(obj.stkTos(1));
+
+        break;
+
+    case SIZE_Q:
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::neg_rm64)
+            .setRmReg(obj.stkTos(1));
+
+        break;
+
+    case SIZE_XMM:
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::xorpd_rx_rm128x)
+            .setR(REG_A)
+            .setRmReg(REG_A);
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::movd_rx_rm64)
+            .setR(REG_B)
+            .setRmReg(obj.stkTos(1));
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::subsd_rx_rm64x)
+            .setR(REG_A)
+            .setRmReg(REG_B);
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::movd_rm64_rx)
+            .setR(REG_A)
+            .setRmReg(obj.stkTos(1));
+
+        break;
+
+    case SIZE_B:
+    case SIZE_W:
+    NODEFAULT
+    }
 
     exprType.dtor();
 
@@ -1664,11 +1712,14 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     }
 
     if (childType.ctor(tmpMask)){
-
         ERR("Ambiguous type");
+        return true;
     }
 
-    TRY_B(children[0].compile(ofile, scope, prog));
+    TRY_B(children[0].compile(obj, scope, prog));
+
+    if (childType.type != TypeSpec::T_VOID)
+        obj.stkPull(1);
 
     switch (exprType.type) {
     case TypeSpec::T_VOID:
@@ -1678,20 +1729,47 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_DBL:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            fprintf(ofile, "push ");
-            TRY_B(exprType.compile(ofile));
-            fprintf(ofile, "0\n");
+            obj.stkPush();
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::xor_rm64_r64)
+                .setRmReg(obj.stkTos(1))
+                .setR(obj.stkTos(1));
+
             break;
 
         case TypeSpec::T_DBL:
             break;
 
         case TypeSpec::T_INT4:
-            fprintf(ofile, "d2i\n");
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movd_rx_rm64)
+                .setR(REG_A)
+                .setRmReg(obj.stkTos(1));
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::cvtsd2si_r32_rm64x)
+                .setR(obj.stkTos(1))
+                .setRmReg(REG_A);
+
             break;
 
         case TypeSpec::T_INT8:
-            fprintf(ofile, "d2l\n");  // TODO: Implement
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movd_rx_rm64)
+                .setR(REG_A)
+                .setRmReg(obj.stkTos(1));
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::cvtsd2si_r64_rm64x)
+                .setR(obj.stkTos(1))
+                .setRmReg(REG_A);
+
             break;
 
         NODEFAULT
@@ -1701,20 +1779,36 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_INT8:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            fprintf(ofile, "push ");
-            TRY_B(exprType.compile(ofile));
-            fprintf(ofile, "0\n");
+            obj.stkPush();
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::xor_rm64_r64)
+                .setRmReg(obj.stkTos(1))
+                .setR(obj.stkTos(1));
+
             break;
 
         case TypeSpec::T_DBL:
-            fprintf(ofile, "l2d\n");  // TODO: Implement
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::cvtsi2sd_rx_rm64)
+                .setR(REG_A)
+                .setRmReg(obj.stkTos(1));
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movd_rm64_rx)
+                .setRmReg(obj.stkTos(1))
+                .setR(REG_A);
+
             break;
 
         case TypeSpec::T_INT4:
+            // Kind of works automatically
             break;
 
         case TypeSpec::T_INT8:
-            // Kind of works automatically
             break;
 
         NODEFAULT
@@ -1724,20 +1818,41 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_INT4:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            fprintf(ofile, "push ");
-            TRY_B(exprType.compile(ofile));
-            fprintf(ofile, "0\n");
+            obj.stkPush();
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::xor_rm32_r32)
+                .setRmReg(obj.stkTos(1))
+                .setR(obj.stkTos(1));
+
             break;
 
         case TypeSpec::T_DBL:
-            fprintf(ofile, "i2d\n");
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::cvtsi2sd_rx_rm32)
+                .setR(REG_A)
+                .setRmReg(obj.stkTos(1));
+
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movd_rm64_rx)
+                .setRmReg(obj.stkTos(1))
+                .setR(REG_A);
+
             break;
 
         case TypeSpec::T_INT4:
-            // Kind of works automatically, although a bit trickier
             break;
 
         case TypeSpec::T_INT8:
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movsx_r64_rm32)
+                .setR(obj.stkTos(1))
+                .setRmReg(obj.stkTos(1));
+
             break;
 
         NODEFAULT

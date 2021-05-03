@@ -60,6 +60,8 @@ public:
         };
 
         inline unsigned getLength(unsigned size) const {
+            assert(size != SIZE_XMM);
+
             return size == -1u ? 0 : 1 << size;
         }
     };
@@ -71,6 +73,8 @@ public:
         };
 
         inline unsigned getLength(unsigned size) const {
+            assert(size != SIZE_XMM);
+
             return size == -1u ? 0 : 1 << size;
         }
     };

@@ -262,7 +262,7 @@ public:
 
     //--------------------------------------------------------------------------------
 
-    reg_e stkTos(unsigned depth=0) const;
+    reg_e stkTos(unsigned depth = 1) const;
 
     ObjectFactory::result_e stkPush();
 
