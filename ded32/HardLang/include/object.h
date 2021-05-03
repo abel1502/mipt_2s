@@ -216,6 +216,10 @@ struct PackedInstruction {
 
     bool setRexOp(const uint8_t new_op[3], unsigned opcodeSize);
 
+    bool setRawOpVariant(reg_e reg);
+
+    bool setRexOpVariant(reg_e reg);
+
     //--------------------------------------------------------------------------------
 
     FACTORIES(PackedInstruction)

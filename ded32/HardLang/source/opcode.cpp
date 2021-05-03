@@ -176,19 +176,21 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize
         }
     }
 
-    if (rSize != -1u) {
-        if (!pi.flags.hasModrm()) {
-            ERR("Embedded register operands not yet implemented, sorry");
-            return true;
-        }
-
+    if (rSize != -1u && pi.flags.hasModrm()) {
         TRY_B(r.writeModRm(pi.modrm));
 
         if (pi.flags.getType() == pi.T_REX) {
             TRY_B(rm.writeRex(pi.rex));
         }
+    } else if (rSize != -1u) {
+        if (pi.flags.getType() == pi.T_REX) {
+            TRY_B(rm.writeRex(pi.rex));
+            TRY_B(pi.setRexOpVariant(r.reg));
+        } else {
+            TRY_B(pi.setRawOpVariant(r.reg));
+        }
     } else if (variant != -1u) {
-        pi.flags.setHasModrm(true);
+        pi.flags.setHasModrm(true);  // TODO: Maybe assert instead of setting?
 
         pi.modrm.reg = variant;
     }

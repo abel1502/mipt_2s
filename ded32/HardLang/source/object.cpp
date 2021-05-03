@@ -58,6 +58,44 @@ bool PackedInstruction::setRexOp(const uint8_t new_op[3], unsigned opcodeSize) {
     return false;
 }
 
+bool PackedInstruction::setRawOpVariant(reg_e reg) {
+    if (flags.getType() != T_PLAIN) {
+        ERR("Use a method corresponding to your opcode type instead");
+        return true;
+    }
+
+    if (flags.getOpcodeSize() != 1) {
+        ERR("Opcode too big");
+        return true;
+    }
+
+    if (reg >= REG_8) {
+        ERR("Register needs REX prefix");
+        return true;
+    }
+
+    rawOp[0] = (rawOp[0] & ~0b111) | (reg & 0b111);
+
+    return false;
+}
+
+bool PackedInstruction::setRexOpVariant(reg_e reg) {
+    if (flags.getType() != T_REX) {
+        ERR("Use a method corresponding to your opcode type instead");
+        return true;
+    }
+
+    if (flags.getOpcodeSize() != 1) {
+        ERR("Opcode too big");
+        return true;
+    }
+
+    rex.op[0] = (rex.op[0] & ~0b111) | (reg & 0b111);
+    rex.B = reg >= REG_8;
+
+    return false;
+}
+
 bool PackedInstruction::ctor() {
     // TODO: ?
 

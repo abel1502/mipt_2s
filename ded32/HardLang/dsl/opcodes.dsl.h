@@ -42,9 +42,18 @@ OPDEF(push_imm8,      {0x6A},     -1,     -1,     -1, SIZE_B, -1, {})
 OPDEF(push_imm16,     {0x68},     -1,     -1,     -1, SIZE_W, -1, {0x66})
 OPDEF(push_imm32,     {0x68},     -1,     -1,     -1, SIZE_D, -1, {})
 
+OPDEF(push_r16,       {0x50},     -1, SIZE_W,     -1,     -1,  6, {0x66})
+OPDEF(push_r64,       {0x50},     -1, SIZE_Q,     -1,     -1,  6, {})
+
 
 OPDEF(pop_rm16,       {0x8F}, SIZE_W,     -1,     -1,     -1, -1, {0x66})
 OPDEF(pop_rm64,       {0x8F}, SIZE_Q,     -1,     -1,     -1, -1, {})
+
+
+OPDEF(mov_r8_imm8,    {0xB0},     -1, SIZE_B,     -1, SIZE_B, -1, {})
+OPDEF(mov_r16_imm16,  {0xB8},     -1, SIZE_W,     -1, SIZE_W, -1, {0x66})
+OPDEF(mov_r32_imm32,  {0xB8},     -1, SIZE_D,     -1, SIZE_D, -1, {})
+OPDEF(mov_r64_imm64,  {0xB8},     -1, SIZE_Q,     -1, SIZE_Q, -1, {})
 
 
 OPDEF(ret,            {0xC3},     -1,     -1,     -1,     -1, -1, {})
@@ -211,6 +220,9 @@ OPDEF(movzx_r64_rm8,  B_(0x0F, 0xB6), SIZE_B, SIZE_Q,     -1,     -1, -1, {})
 
 OPDEF(movzx_r32_rm16, B_(0x0F, 0xB7), SIZE_W, SIZE_D,     -1,     -1, -1, {})
 OPDEF(movzx_r64_rm16, B_(0x0F, 0xB7), SIZE_W, SIZE_Q,     -1,     -1, -1, {})
+
+
+
 
 
 // ucomisd is probably the preferable method of comparison
