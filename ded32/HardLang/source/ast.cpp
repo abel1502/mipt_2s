@@ -452,7 +452,7 @@ bool Expression::compile(ObjectFactory &obj, Scope *scope, const Program *prog) 
 bool Expression::compileVarRecepient(ObjectFactory &obj, Scope *scope, const Program *) {
     assert(isVarRef());
 
-    obj.stkPull(1);
+    TRY_B(obj.stkPull(1));
 
     TRY_B(obj.addInstr());
 
@@ -482,7 +482,7 @@ bool Expression::compileVarRecepient(ObjectFactory &obj, Scope *scope, const Pro
 
     obj.getLastInstr().setR(obj.stkTos(1));
 
-    // obj.stkPop();  // Intentionally not called, as the value is supposed to be left on the stack
+    // TRY_B(obj.stkPop());  // Intentionally not called, as the value is supposed to be left on the stack
 
     return false;
 }
@@ -534,11 +534,11 @@ bool Expression::compilePseudofunc(ObjectFactory &obj, Scope *scope, const Progr
 
     // TODO: Maybe encapsulate tos-push-pop, addInstr and getLastInstr
 
-    #define PF_TOS      obj.stkTos
-    #define PF_PUSH     obj.stkPush
-    #define PF_POP      obj.stkPop
-    #define PF_PULL     obj.stkPull
-    #define PF_FLUSH    obj.stkFlush
+    #define PF_TOS(...)     obj.stkTos(__VA_ARGS__)
+    #define PF_PUSH(...)    TRY_B(obj.stkPush(__VA_ARGS__))
+    #define PF_POP(...)     TRY_B(obj.stkPop(__VA_ARGS__))
+    #define PF_PULL(...)    TRY_B(obj.stkPull(__VA_ARGS__))
+    #define PF_FLUSH(...)   TRY_B(obj.stkFlush(__VA_ARGS__))
 
     #define PF_ADDINSTR() \
         TRY_B(obj.addInstr())
@@ -770,7 +770,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
     TRY_B(children[1].compile(obj, scope, prog));
 
     if (am != AM_EQ) {
-        obj.stkPull(2);
+        TRY_B(obj.stkPull(2));
 
         switch (am) {
         case AM_ADDEQ:
@@ -782,7 +782,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -793,7 +793,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -822,7 +822,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -842,7 +842,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -853,7 +853,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -882,7 +882,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -902,7 +902,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(obj.stkTos(2))
                     .setRmReg(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -913,7 +913,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(obj.stkTos(2))
                     .setRmReg(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -942,7 +942,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -979,7 +979,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_A);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1007,7 +1007,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_A);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1036,7 +1036,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1073,7 +1073,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_D);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1101,7 +1101,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_D);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1146,7 +1146,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
         TRY_B(children[i + 1].compile(obj, scope, prog));
 
-        obj.stkPull(2);
+        TRY_B(obj.stkPull(2));
 
         switch (ops[i]) {
 
@@ -1172,7 +1172,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))                    \
                     .setImm(0xff);                              \
                                                                 \
-                obj.stkPop();                                   \
+                TRY_B(obj.stkPop());                            \
                                                                 \
                 break;                                          \
                                                                 \
@@ -1195,7 +1195,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))                    \
                     .setImm(0xff);                              \
                                                                 \
-                obj.stkPop();                                   \
+                TRY_B(obj.stkPop());                            \
                                                                 \
                 break;                                          \
                                                                 \
@@ -1230,7 +1230,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))                    \
                     .setImm(0xff);                              \
                                                                 \
-                obj.stkPop();                                   \
+                TRY_B(obj.stkPop());                            \
                                                                 \
                 break;                                          \
                                                                 \
@@ -1280,7 +1280,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1291,7 +1291,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1320,7 +1320,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1340,7 +1340,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1351,7 +1351,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1380,7 +1380,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1400,7 +1400,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(obj.stkTos(2))
                     .setRmReg(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1411,7 +1411,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(obj.stkTos(2))
                     .setRmReg(obj.stkTos(1));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1440,7 +1440,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1477,7 +1477,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_A);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1505,7 +1505,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_A);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1534,7 +1534,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1571,7 +1571,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_D);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1599,7 +1599,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                     .setRmReg(obj.stkTos(2))
                     .setR(REG_D);
 
-                obj.stkPop();
+                TRY_B(obj.stkPop());
 
                 break;
 
@@ -1641,7 +1641,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
     TRY_B(children[0].compile(obj, scope, prog));
 
-    obj.stkPull(1);
+    TRY_B(obj.stkPull(1));
 
     switch (exprType.getSize()) {
     case SIZE_D:
@@ -1719,7 +1719,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     TRY_B(children[0].compile(obj, scope, prog));
 
     if (childType.type != TypeSpec::T_VOID)
-        obj.stkPull(1);
+        TRY_B(obj.stkPull(1));
 
     switch (exprType.type) {
     case TypeSpec::T_VOID:
@@ -1729,7 +1729,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_DBL:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            obj.stkPush();
+            TRY_B(obj.stkPush());
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
@@ -1779,7 +1779,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_INT8:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            obj.stkPush();
+            TRY_B(obj.stkPush());
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
@@ -1818,7 +1818,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
     case TypeSpec::T_INT4:
         switch (childType.type) {
         case TypeSpec::T_VOID:
-            obj.stkPush();
+            TRY_B(obj.stkPush());
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
@@ -1875,23 +1875,46 @@ bool Expression::VMIN(Num, compile)(ObjectFactory &obj, Scope *, const Program *
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
     //TRY_B(exprType.type == TypeSpec::T_VOID);
 
+    double immVal = 0.;
+    static_assert(sizeof(immVal) == 8);
+
     switch (exprType.type) {
     case TypeSpec::T_VOID:
         ERR("Void isn't a number");
         return true;
 
     case TypeSpec::T_INT4:
+        TRY_B(obj.stkPush());
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::mov_r32_imm32)
+            .setR(obj.stkTos(1))
+            .setImm(num->asInt());
+
+        break;
+
     case TypeSpec::T_INT8:
-        fprintf(ofile, "push ");
-        exprType.compile(ofile);
-        fprintf(ofile, "%llu\n", num->asInt());
+        TRY_B(obj.stkPush());
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::mov_r64_imm64)
+            .setR(obj.stkTos(1))
+            .setImm(num->asInt());
 
         break;
 
     case TypeSpec::T_DBL:
-        fprintf(ofile, "push ");
-        exprType.compile(ofile);
-        fprintf(ofile, "%lg\n", num->asDbl());
+        TRY_B(obj.stkPush());
+
+        immVal = num->asDbl();
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::mov_r64_imm64)
+            .setR(obj.stkTos(1))
+            .setImm(*(uint64_t *)&immVal);  // TODO: Test correctness
 
         break;
 
@@ -1918,9 +1941,34 @@ bool Expression::VMIN(VarRef, compile)(ObjectFactory &obj, Scope *scope, const P
         return true;
     }*/
 
-    fprintf(ofile, "push ");
-    TRY_B(Var::compile(ofile, vi));
-    fprintf(ofile, "\n");
+    TRY_B(obj.stkPush());
+
+    TRY_B(obj.addInstr());
+
+    switch (vi.var->getSize()) {
+    case SIZE_B:
+        obj.getLastInstr().setOp(Opcode_e::mov_r8_rm8);
+        break;
+
+    case SIZE_W:
+        obj.getLastInstr().setOp(Opcode_e::mov_r16_rm16);
+        break;
+
+    case SIZE_D:
+        obj.getLastInstr().setOp(Opcode_e::mov_r32_rm32);
+        break;
+
+    case SIZE_Q:
+    case SIZE_XMM:
+        obj.getLastInstr().setOp(Opcode_e::mov_r64_rm64);
+        break;
+
+    NODEFAULT
+    }
+
+    TRY_B(Var::reference(obj.getLastInstr(), vi));
+
+    obj.getLastInstr().setR(obj.stkTos(1));
 
     exprType.dtor();
 
