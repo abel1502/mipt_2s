@@ -2,10 +2,13 @@ def main() {
     var int4:a;
     var int4:b = 5;
     b *= 17;
+	
     while b > 55 {  // Test comment
         b -= 2;
     }
+	
     a = (b + 7 - 1) / 2;
+	
     /* Test block comment 
     */if a > 10 {
         //_print_int8(int8:a);
@@ -16,6 +19,12 @@ def main() {
     }
     
     //_print_int4(a + b);
+	
+	var int8:tmp;
+	tmp = int8:(a + a);
+	
+	var dbl:tmp2;
+	tmp2 = dbl:tmp + dbl:0b123 - 123.;
     
     ret;
 }
