@@ -27,6 +27,8 @@ public:
         size = 0;
         capacity = 0;
 
+        TRY_B(resize(DEFAULT_CAPACITY));
+
         return false;
     }
 
@@ -38,12 +40,13 @@ public:
         return false;
     }
 
-    template <typename = void>
     void dtor() {
         if constexpr (HAS_FACTORIES(T)) {
-            for (unsigned i = 0; i < size; ++i) {
-                buf[i].dtor();
-                //buf[i] = {};
+            if (buf) {
+                for (unsigned i = 0; i < size; ++i) {
+                    buf[i].dtor();
+                    //buf[i] = {};
+                }
             }
         }
 
@@ -84,8 +87,10 @@ public:
         }
 
         if constexpr (HAS_FACTORIES(T)) {
-            buf[size++].ctor();
+            buf[size].ctor();
         }
+
+        size++;
 
         return false;
     }
@@ -188,14 +193,18 @@ public:
                     compactBuf[i].dtor();
                 }
             } else {
-                for (unsigned i = 0; i < size; ++i) {
-                    buf[i] = {};
+                if (buf) {
+                    for (unsigned i = 0; i < size; ++i) {
+                        buf[i].dtor();
+                    }
                 }
             }
         }
 
-        free(buf);
-        buf = nullptr;
+        if (!isCompact()) {
+            free(buf);
+            buf = nullptr;
+        }
 
         size = 0;
         capacity = 0;
