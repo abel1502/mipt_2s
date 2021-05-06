@@ -834,13 +834,13 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -852,7 +852,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -893,13 +893,13 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -911,7 +911,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -952,13 +952,13 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -970,7 +970,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1045,13 +1045,13 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -1063,7 +1063,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1233,13 +1233,13 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             case TypeSpec::T_DBL:                               \
                 TRY_B(obj.addInstr());                          \
                 obj.getLastInstr()                              \
-                    .setOp(Opcode_e::movd_rx_rm64)              \
+                    .setOp(Opcode_e::movq_rx_rm64)              \
                     .setR(REG_A)                                \
                     .setRmReg(obj.stkTos(2));                   \
                                                                 \
                 TRY_B(obj.addInstr());                          \
                 obj.getLastInstr()                              \
-                    .setOp(Opcode_e::movd_rx_rm64)              \
+                    .setOp(Opcode_e::movq_rx_rm64)              \
                     .setR(REG_B)                                \
                     .setRmReg(obj.stkTos(1));                   \
                                                                 \
@@ -1328,13 +1328,13 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -1346,7 +1346,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1387,13 +1387,13 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -1405,7 +1405,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1446,13 +1446,13 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -1464,7 +1464,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1539,13 +1539,13 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
             case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rx_rm64)
+                    .setOp(Opcode_e::movq_rx_rm64)
                     .setR(REG_B)
                     .setRmReg(obj.stkTos(1));
 
@@ -1557,7 +1557,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
-                    .setOp(Opcode_e::movd_rm64_rx)
+                    .setOp(Opcode_e::movq_rm64_rx)
                     .setR(REG_A)
                     .setRmReg(obj.stkTos(2));
 
@@ -1694,7 +1694,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
         TRY_B(obj.addInstr());
         obj.getLastInstr()
-            .setOp(Opcode_e::movd_rx_rm64)
+            .setOp(Opcode_e::movq_rx_rm64)
             .setR(REG_B)
             .setRmReg(obj.stkTos(1));
 
@@ -1706,7 +1706,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
         TRY_B(obj.addInstr());
         obj.getLastInstr()
-            .setOp(Opcode_e::movd_rm64_rx)
+            .setOp(Opcode_e::movq_rm64_rx)
             .setR(REG_A)
             .setRmReg(obj.stkTos(1));
 
@@ -1769,7 +1769,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_INT4:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movd_rx_rm64)
+                .setOp(Opcode_e::movq_rx_rm64)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
@@ -1784,7 +1784,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_INT8:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movd_rx_rm64)
+                .setOp(Opcode_e::movq_rx_rm64)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
@@ -1822,7 +1822,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movd_rm64_rx)
+                .setOp(Opcode_e::movq_rm64_rx)
                 .setRmReg(obj.stkTos(1))
                 .setR(REG_A);
 
@@ -1861,7 +1861,7 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movd_rm64_rx)
+                .setOp(Opcode_e::movq_rm64_rx)
                 .setRmReg(obj.stkTos(1))
                 .setR(REG_A);
 

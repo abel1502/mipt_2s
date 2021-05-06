@@ -53,7 +53,7 @@ DEF_PFUNC(DBL, Dbl, sqrt, {
 
     PF_ADDINSTR();
     PF_LASTINSTR()
-        .setOp(Opcode_e::movd_rx_rm64)
+        .setOp(Opcode_e::movq_rx_rm64)
         .setR(REG_B)
         .setRmReg(PF_TOS(1));
 
@@ -69,7 +69,7 @@ DEF_PFUNC(DBL, Dbl, sqrt, {
 
     PF_ADDINSTR();
     PF_LASTINSTR()
-        .setOp(Opcode_e::movd_rm64_rx)
+        .setOp(Opcode_e::movq_rm64_rx)
         .setR(REG_A)
         .setRmReg(PF_TOS(1));
 })

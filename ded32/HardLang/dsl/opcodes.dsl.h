@@ -223,50 +223,44 @@ OPDEF(movzx_r64_rm16, B_(0x0F, 0xB7), SIZE_W, SIZE_Q,     -1,     -1, -1, {})
 
 
 
+OPDEF(ucomisd_rx_rm64x,     B_(0x0F, 0x2E), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
+
+OPDEF(addsd_rx_rm64x,       B_(0x0F, 0x58), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(subsd_rx_rm64x,       B_(0x0F, 0x5C), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(mulsd_rx_rm64x,       B_(0x0F, 0x59), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(divsd_rx_rm64x,       B_(0x0F, 0x5E), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(sqrtsd_rx_rm64x,      B_(0x0F, 0x51), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(maxsd_rx_rm64x,       B_(0x0F, 0x5F), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
+
+OPDEF(minsd_rx_rm64x,       B_(0x0F, 0x5D), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
 
 
-// ucomisd is probably the preferable method of comparison
+OPDEF(movsd_rx_rm64x,       B_(0x0F, 0x10), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
 
-// OPDEF(cmpsd_rx_rm64x_imm8,  B_(0xF2, 0x0F, 0xC2), SIZE_XMM, SIZE_XMM,       -1,   SIZE_B, -1, {})
-OPDEF(ucomisd_rx_rm64x,     B_(0x66, 0x0F, 0x2E), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-// OPDEF(comisd_rx_rm64x,      B_(0x66, 0x0F, 0x2F), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(addsd_rx_rm64x,       B_(0xF2, 0x0F, 0x58), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(subsd_rx_rm64x,       B_(0xF2, 0x0F, 0x5C), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(mulsd_rx_rm64x,       B_(0xF2, 0x0F, 0x59), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(divsd_rx_rm64x,       B_(0xF2, 0x0F, 0x5E), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(sqrtsd_rx_rm64x,      B_(0xF2, 0x0F, 0x51), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(maxsd_rx_rm64x,       B_(0xF2, 0x0F, 0x5F), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(minsd_rx_rm64x,       B_(0xF2, 0x0F, 0x5D), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(movsd_rm64x_rx,       B_(0x0F, 0x11), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0xF2})
 
 
-OPDEF(movsd_rx_rm64x,       B_(0xF2, 0x0F, 0x10), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(movd_rx_rm32,         B_(0x0F, 0x6E),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {0x66})
+OPDEF(movq_rx_rm64,         B_(0x0F, 0x6E),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {0x66})
 
-OPDEF(movsd_rm64x_rx,       B_(0xF2, 0x0F, 0x11), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
-
-
-OPDEF(movd_rx_rm32,         B_(0x66, 0x0F, 0x6E),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {})
-OPDEF(movd_rx_rm64,         B_(0x66, 0x0F, 0x6E),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {})
-
-OPDEF(movd_rm32_rx,         B_(0x66, 0x0F, 0x7E),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {})
-OPDEF(movd_rm64_rx,         B_(0x66, 0x0F, 0x7E),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(movd_rm32_rx,         B_(0x0F, 0x7E),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {0x66})
+OPDEF(movq_rm64_rx,         B_(0x0F, 0x7E),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {0x66})
 
 
-OPDEF(cvtsd2si_r32_rm64x,   B_(0xF2, 0x0F, 0x2D), SIZE_XMM,   SIZE_D,       -1,       -1, -1, {})
-OPDEF(cvtsd2si_r64_rm64x,   B_(0xF2, 0x0F, 0x2D), SIZE_XMM,   SIZE_Q,       -1,       -1, -1, {})
+OPDEF(cvtsd2si_r32_rm64x,   B_(0x0F, 0x2D), SIZE_XMM,   SIZE_D,       -1,       -1, -1, {0xF2})
+OPDEF(cvtsd2si_r64_rm64x,   B_(0x0F, 0x2D), SIZE_XMM,   SIZE_Q,       -1,       -1, -1, {0xF2})
 
 
-OPDEF(cvtsi2sd_rx_rm32,     B_(0xF2, 0x0F, 0x2A),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {})
-OPDEF(cvtsi2sd_rx_rm64,     B_(0xF2, 0x0F, 0x2A),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(cvtsi2sd_rx_rm32,     B_(0x0F, 0x2A),   SIZE_D, SIZE_XMM,       -1,       -1, -1, {0xF2})
+OPDEF(cvtsi2sd_rx_rm64,     B_(0x0F, 0x2A),   SIZE_Q, SIZE_XMM,       -1,       -1, -1, {0xF2})
 
 
-OPDEF(xorpd_rx_rm128x,      B_(0x66, 0x0F, 0x57), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {})
+OPDEF(xorpd_rx_rm128x,      B_(0x0F, 0x57), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
 
 
 /* ? rcl rcr rol ror shl shr sal sar */
