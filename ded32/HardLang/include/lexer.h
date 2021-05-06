@@ -102,8 +102,26 @@ public:
 
     void dump() const;
 
+    inline void setPos(unsigned new_line, unsigned new_symb) {
+        line = new_line;
+        symb = new_symb;
+    }
+
+    inline unsigned getLine() const {
+        return line;
+    }
+
+    unsigned getSymb() const {
+        return symb;
+    }
+
+    //bool reconstruct(const char *dest; unsigned limit);
+
 private:
     Type_e type;
+
+    unsigned line;
+    unsigned symb;
 
     union {
         // TOK_KWD

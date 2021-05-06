@@ -12,17 +12,26 @@ namespace abel {
 bool Token::ctor() {
     type = TOK_ERROR;
 
+    line = 0;
+    symb = 0;
+
     return false;
 }
 
 bool Token::ctorEnd() {
     type = TOK_END;
 
+    line = 0;
+    symb = 0;
+
     return false;
 }
 
 bool Token::ctorErr() {
     type = TOK_ERROR;
+
+    line = 0;
+    symb = 0;
 
     return false;
 }
@@ -31,6 +40,10 @@ bool Token::ctorName(const char *new_start, unsigned new_length) {
     assert(new_start);
 
     type = TOK_NAME;
+
+    line = 0;
+    symb = 0;
+
     start = new_start;
     length = new_length;
 
@@ -39,6 +52,9 @@ bool Token::ctorName(const char *new_start, unsigned new_length) {
 
 bool Token::ctorNum(unsigned long long new_integer, double new_fraction, int new_exp, bool new_intFlag) {
     type = TOK_NUM;
+
+    line = 0;
+    symb = 0;
 
     integer = new_integer;
     fraction = new_fraction;
@@ -51,6 +67,9 @@ bool Token::ctorNum(unsigned long long new_integer, double new_fraction, int new
 bool Token::ctorKwd(Token::Kwd_e new_kwd) {
     type = TOK_KWD;
 
+    line = 0;
+    symb = 0;
+
     kwd = new_kwd;
 
     return false;
@@ -58,6 +77,9 @@ bool Token::ctorKwd(Token::Kwd_e new_kwd) {
 
 bool Token::ctorPunct(Token::Punct_e new_punct) {
     type = TOK_PUNCT;
+
+    line = 0;
+    symb = 0;
 
     punct = new_punct;
 
@@ -399,7 +421,7 @@ bool Lexer::appendTok() {
         TRY_B(resize(capacity * 2));
     }
 
-    size++;
+    TRY_B(tokens[size++].ctor());
 
     assert(size <= capacity);
 
@@ -411,6 +433,8 @@ bool Lexer::parseTok(Token *dest, FileBufIterator *iter) {
     assert(iter);
 
     skipSpace(iter);
+
+    dest->setPos(iter->getLine(), iter->getSymb());
 
     char tmp = iter->cur();
 
