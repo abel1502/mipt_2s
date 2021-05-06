@@ -132,14 +132,21 @@ public:
 
     bool addVar(const Var *var);
 
+    bool addArg(const Var *arg, unsigned idx);
+
     void setParent(const Scope *new_parent);
 
     uint32_t getFrameSize() const;
+
+    int32_t getCurDelta() const;
+
+    void shiftFrame(int32_t delta);
 
 private:
 
     const Scope *parent;
     int32_t curOffset;
+    int32_t curDelta;
     Hashtable<VarInfo> vars;
 
 };

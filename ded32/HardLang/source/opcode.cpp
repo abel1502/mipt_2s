@@ -103,14 +103,7 @@ bool Instruction::ctor() {
 void Instruction::dtor() {
 }
 
-bool Instruction::compile(PackedInstruction &pi, unsigned limit) const {
-    TRY_B(getLength() > limit);
-
-    return compile(pi);
-}
-
 bool Instruction::compile(PackedInstruction &pi) const {
-    // TODO: !!!!!!!!!
     TRY_B(pi.ctor());
 
     if (removed) {
@@ -176,15 +169,14 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize
         }
     }
 
-    if (rSize != -1u && pi.flags.hasModrm()) {
-        TRY_B(r.writeModRm(pi.modrm));
+    if (rSize != -1u) {
+        if (pi.flags.hasModrm()) {
+            TRY_B(r.writeModRm(pi.modrm));
 
-        if (pi.flags.getType() == pi.T_REX) {
-            TRY_B(rm.writeRex(pi.rex));
-        }
-    } else if (rSize != -1u) {
-        if (pi.flags.getType() == pi.T_REX) {
-            TRY_B(rm.writeRex(pi.rex));
+            if (pi.flags.getType() == pi.T_REX) {
+                TRY_B(r.writeRex(pi.rex));
+            }
+        } else if (pi.flags.getType() == pi.T_REX) {
             TRY_B(pi.setRexOpVariant(r.reg));
         } else {
             TRY_B(pi.setRawOpVariant(r.reg));

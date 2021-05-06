@@ -207,7 +207,18 @@ void PackedInstruction::hexDump() const {
     printf("\n");
 }
 
-bool PackedInstruction::compile(char **dest) const {
+unsigned PackedInstruction::getLength() const {
+    return flags.getPrefCnt()
+         + flags.getOpcodeSize()
+         + flags.hasModrm()
+         + flags.hasSib()
+         + (1 << flags.getDispSize())
+         + (1 << flags.getImmSize());
+}
+
+bool PackedInstruction::compile(char **dest, unsigned limit) const {
+    TRY_B(getLength() > limit);
+
     char *oldDest = *dest;
 
     #define NEXT_BYTE_  *(*dest)++
@@ -327,6 +338,7 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
     }
 
     stkCurTos = (stkCurTos + 1) % REGSTK_SIZE;
+    stkCurSize++;
 
     return lastResult = R_OK;
 }
@@ -350,6 +362,7 @@ ObjectFactory::result_e ObjectFactory::stkPop() {
     }
 
     stkCurTos = (REGSTK_SIZE + stkCurTos - 1) % REGSTK_SIZE;
+    stkCurSize--;
 
     return lastResult = R_OK;
 }
@@ -378,10 +391,12 @@ ObjectFactory::result_e ObjectFactory::stkFlush() {
 }
 
 ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
-    assert(req < REGSTK_SIZE); // TODO: Maybe do patches of 4?
+    assert(req < REGSTK_SIZE);
 
     if (stkCurSize >= req)
         return lastResult = R_OK;
+
+    req = (req + 3) / (REGSTK_SIZE / 2) * (REGSTK_SIZE / 2);  // So that we only do patches of 4
 
     TRY(addInstr());
     getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
@@ -427,6 +442,16 @@ Instruction &ObjectFactory::getLastInstr() {
     REQUIRE(code.getSize() > 0);
 
     return code[-1];
+}
+
+void ObjectFactory::dump() const {
+    for (unsigned i = 0; i < code.getSize(); ++i) {
+        PackedInstruction pi{};
+
+        REQUIRE(!code[i].compile(pi));
+
+        pi.hexDump();
+    }
 }
 
 }

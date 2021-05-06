@@ -57,6 +57,9 @@ void TypeSpec::dtor() {
 }*/
 
 void TypeSpec::reconstruct(FILE *ofile) const {
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+
     switch (type) {
     case TypeSpec::T_DBL:
         fprintf(ofile, "dbl:");
@@ -76,6 +79,8 @@ void TypeSpec::reconstruct(FILE *ofile) const {
         // FALLTHROUGH
     NODEFAULT
     }
+
+    #pragma GCC diagnostic pop
 }
 
 uint32_t TypeSpec::getSize() const {
@@ -184,15 +189,19 @@ const Token *Var::getName() const {
 bool Scope::ctor() {
     TRY_B(vars.ctor());
     curOffset = 0;
+    curDelta = 0;
     parent = nullptr;
 
     return false;
 }
 
 void Scope::dtor() {
+    assert(curDelta == 0);
+
     vars.dtor();
     parent = nullptr;
     curOffset = 0;
+    curDelta = 0;
 }
 
 VarInfo Scope::getInfo(const Var *var) const {
@@ -202,14 +211,20 @@ VarInfo Scope::getInfo(const Var *var) const {
 VarInfo Scope::getInfo(const Token *name) const {
     const Scope *cur = this;
 
+    uint32_t skipped = 0;
+
     while (cur && !cur->vars.has(name->getStr(), name->getLength())) {
+        skipped += cur->getFrameSize();
+
         cur = cur->parent;
     }
 
     if (!cur)
         return {0, nullptr};
 
-    return cur->vars.get(name->getStr(), name->getLength());
+    VarInfo vi = cur->vars.get(name->getStr(), name->getLength());
+    vi.offset += curDelta - skipped;
+    return vi;
 }
 
 bool Scope::hasVar(const Var *var) const {
@@ -233,15 +248,31 @@ bool Scope::addVar(const Var *var) {
         return true;
     }
 
-    curOffset -= var->getType().getSize();
+    //curOffset -= var->getType().getSize();
+    assert(var->getType().getSize() <= 8);
+    curOffset -= 8;
 
     TRY_B(vars.set(var->getName()->getStr(), var->getName()->getLength(), {curOffset, var}));
 
     return false;
 }
 
+bool Scope::addArg(const Var *arg, unsigned idx) {
+    if (vars.has(arg->getName()->getStr(), arg->getName()->getLength())) {
+        ERR("Redeclaration of argument \"%.*s\" within the same scope", arg->getName()->getLength(), arg->getName()->getStr());
+
+        return true;
+    }
+
+    TRY_B(vars.set(arg->getName()->getStr(), arg->getName()->getLength(), {(int32_t)(8 * (idx + 1)), arg}));  // TODO: Check
+
+    return false;
+}
+
 void Scope::setParent(const Scope *new_parent) {
     //printf("New parent: %p -> %p\n", parent, new_parent);
+
+    //assert(parent == nullptr || parent == new_parent || new_parent == nullptr);
 
     parent = new_parent;
 }
@@ -257,6 +288,14 @@ uint32_t Scope::getFrameSize() const {
     }
 
     return result;
+}
+
+int32_t Scope::getCurDelta() const {
+    return curDelta;
+}
+
+void Scope::shiftFrame(int32_t delta) {
+    curDelta += delta;
 }
 
 //================================================================================
@@ -457,24 +496,17 @@ bool Expression::compileVarRecepient(ObjectFactory &obj, Scope *scope, const Pro
     TRY_B(obj.addInstr());
 
     VarInfo vi = scope->getInfo(name);
-    switch (vi.var->getSize()) {
-    case SIZE_B:
-        obj.getLastInstr().setOp(Opcode_e::mov_rm8_r8);
-        break;
-
-    case SIZE_W:
-        obj.getLastInstr().setOp(Opcode_e::mov_rm16_r16);
-        break;
-
-    case SIZE_D:
+    switch (vi.var->getType().type) {
+    case TypeSpec::T_INT4:
         obj.getLastInstr().setOp(Opcode_e::mov_rm32_r32);
         break;
 
-    case SIZE_Q:
-    case SIZE_XMM:  // XMM always holds a single double-precision value, and should in fact be placed in the regular register stack most of the time
+    case TypeSpec::T_INT8:
+    case TypeSpec::T_DBL:  // XMM always holds a single double-precision value, and should in fact be placed in the regular register stack most of the time
         obj.getLastInstr().setOp(Opcode_e::mov_rm64_r64);
         break;
 
+    case TypeSpec::T_VOID:
     NODEFAULT
     }
 
@@ -774,8 +806,8 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
         switch (am) {
         case AM_ADDEQ:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::add_rm32_r32)
@@ -786,7 +818,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::add_rm64_r64)
@@ -797,7 +829,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -826,16 +858,15 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case AM_SUBEQ:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::sub_rm32_r32)
@@ -846,7 +877,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::sub_rm64_r64)
@@ -857,7 +888,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -886,16 +917,15 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case AM_MULEQ:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::imul_r32_rm32)
@@ -906,7 +936,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::imul_r64_rm64)
@@ -917,7 +947,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -946,16 +976,15 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case AM_DIVEQ:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm32_r32)
@@ -983,7 +1012,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm64_r64)
@@ -1011,7 +1040,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -1040,16 +1069,15 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case AM_MODEQ:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm32_r32)
@@ -1077,7 +1105,7 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm64_r64)
@@ -1105,13 +1133,12 @@ bool Expression::VMIN(Asgn, compile)(ObjectFactory &obj, Scope *scope, const Pro
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 ERR("Remainder can't be computed for non-integral types");
 
                 return true;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
@@ -1150,9 +1177,11 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
         switch (ops[i]) {
 
+        // TODO: Maybe simplify the comparisons (by somehow repositioning the stkPops)
+
         #define CMP_OP_(SETFLAG)                                \
-            switch (exprType.getSize()) {                       \
-            case SIZE_D:                                        \
+            switch (exprType.type) {                            \
+            case TypeSpec::T_INT4:                              \
                 TRY_B(obj.addInstr());                          \
                 obj.getLastInstr()                              \
                     .setOp(Opcode_e::cmp_rm32_r32)              \
@@ -1176,7 +1205,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                                                                 \
                 break;                                          \
                                                                 \
-            case SIZE_Q:                                        \
+            case TypeSpec::T_INT8:                              \
                 TRY_B(obj.addInstr());                          \
                 obj.getLastInstr()                              \
                     .setOp(Opcode_e::cmp_rm64_r64)              \
@@ -1199,7 +1228,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                                                                 \
                 break;                                          \
                                                                 \
-            case SIZE_XMM:                                      \
+            case TypeSpec::T_DBL:                               \
                 TRY_B(obj.addInstr());                          \
                 obj.getLastInstr()                              \
                     .setOp(Opcode_e::movd_rx_rm64)              \
@@ -1234,8 +1263,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
                                                                 \
                 break;                                          \
                                                                 \
-            case SIZE_B:                                        \
-            case SIZE_W:                                        \
+            case TypeSpec::T_VOID:                              \
             NODEFAULT                                           \
             }
 
@@ -1272,8 +1300,8 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
         #undef CMP_OP_
 
         case OP_ADD:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::add_rm32_r32)
@@ -1284,7 +1312,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::add_rm64_r64)
@@ -1295,7 +1323,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -1324,16 +1352,15 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case OP_SUB:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::sub_rm32_r32)
@@ -1344,7 +1371,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::sub_rm64_r64)
@@ -1355,7 +1382,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -1384,16 +1411,15 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case OP_MUL:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::imul_r32_rm32)
@@ -1404,7 +1430,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::imul_r64_rm64)
@@ -1415,7 +1441,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -1444,16 +1470,15 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case OP_DIV:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm32_r32)
@@ -1481,7 +1506,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm64_r64)
@@ -1509,7 +1534,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::movd_rx_rm64)
@@ -1538,16 +1563,15 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
             break;
 
         case OP_MOD:
-            switch (exprType.getSize()) {
-            case SIZE_D:
+            switch (exprType.type) {
+            case TypeSpec::T_INT4:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm32_r32)
@@ -1575,7 +1599,7 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_Q:
+            case TypeSpec::T_INT8:
                 TRY_B(obj.addInstr());
                 obj.getLastInstr()
                     .setOp(Opcode_e::xor_rm64_r64)
@@ -1603,13 +1627,12 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
 
                 break;
 
-            case SIZE_XMM:
+            case TypeSpec::T_DBL:
                 ERR("Remainder can't be computed for non-integral types");
 
                 return true;
 
-            case SIZE_B:
-            case SIZE_W:
+            case TypeSpec::T_VOID:
             NODEFAULT
             }
 
@@ -1643,8 +1666,8 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
     TRY_B(obj.stkPull(1));
 
-    switch (exprType.getSize()) {
-    case SIZE_D:
+    switch (exprType.type) {
+    case TypeSpec::T_INT4:
         TRY_B(obj.addInstr());
         obj.getLastInstr()
             .setOp(Opcode_e::neg_rm32)
@@ -1652,7 +1675,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
         break;
 
-    case SIZE_Q:
+    case TypeSpec::T_INT8:
         TRY_B(obj.addInstr());
         obj.getLastInstr()
             .setOp(Opcode_e::neg_rm64)
@@ -1660,7 +1683,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
         break;
 
-    case SIZE_XMM:
+    case TypeSpec::T_DBL:
         TRY_B(obj.addInstr());
         obj.getLastInstr()
             .setOp(Opcode_e::xorpd_rx_rm128x)
@@ -1687,8 +1710,7 @@ bool Expression::VMIN(Neg, compile)(ObjectFactory &obj, Scope *scope, const Prog
 
         break;
 
-    case SIZE_B:
-    case SIZE_W:
+    case TypeSpec::T_VOID:
     NODEFAULT
     }
 
@@ -2011,19 +2033,45 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
         children[i].compile(obj, scope, prog);
     }
 
-    // TODO: Resume from here
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::sub_rm64_imm32)
+        .setRmReg(REG_SP)
+        .setImm(scope->getFrameSize());
 
-    fprintf(ofile,
-            "push dwl:rz\n"
-            "push dwl:%u\n"
-            "add dwl:\n"
-            "pop dwl:rz\n"
-            "call dwl:$__func_%.*s\n"
-            "push dwl:rz\n"
-            "push dwl:%u\n"
-            "sub dwl:\n"
-            "pop dwl:rz\n"
-            , scope->getFrameSize(), name->getLength(), name->getStr(), scope->getFrameSize());
+    scope->shiftFrame(-scope->getFrameSize());
+
+    for (unsigned i = 0; i < args->getSize(); ++i) {
+        TRY_B(obj.stkPull(1));
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::push_r64)
+            .setR(obj.stkTos());
+
+        TRY_B(obj.stkPop());
+    }
+
+    TRY_B(obj.stkFlush());
+
+    //fprintf(ofile, "call dwl:$__func_%.*s\n", name->getLength(), name->getStr());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::call_rel32)
+        .setDisp(0);  // TODO: SYMBOL!!!
+
+    // TODO: Figure out the computation stack behaviour!
+    // I guess we do nothing here, and the stack is kept flushed.
+    // Then whoever needs it will pull everything themselves
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::add_rm64_imm32)
+        .setRmReg(REG_SP)
+        .setImm(scope->getFrameSize() + 8 * args->getSize());
+
+    scope->shiftFrame(scope->getFrameSize());
 
     exprType.dtor();
 
@@ -2216,8 +2264,12 @@ void Code::simplifyLastEmpty() {
 }
 
 bool Code::compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog) {
+    assert(obj.stkIsEmpty());
+
     for (unsigned i = 0; i < stmts.getSize(); ++i) {
-        TRY_B(stmts[i].compile(ofile, &scope, rtype, prog));
+        TRY_B(stmts[i].compile(obj, &scope, rtype, prog));
+
+        assert(obj.stkIsEmpty());
     }
 
     return false;
@@ -2391,77 +2443,98 @@ bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec
     } else {
         expr.deduceType(rtype.getMask(), scope, prog);
 
-        TRY_B(expr.compile(ofile, scope, prog));
+        TRY_B(expr.compile(obj, scope, prog));
+
+        // TODO: Figure out the computation stack behaviour!
+        TRY_B(obj.stkFlush());  // I guess we just keep it flushed
     }
 
-    fprintf(ofile, "ret\n");
+    assert(obj.stkIsEmpty());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::ret);
 
     return false;
 }
 
 bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
-    fprintf(ofile,
-            "; while (\n"
-            "$__loop_in_%p:\n"  // TODO: Maybe change to something more adequate
-            , this);
+    unsigned loopLbl = obj.placeLabel();
+    TRY_B(loopLbl == -1u);
+
+    unsigned endLbl = obj.reserveLabel();
 
     TRY_BC(expr.deduceType(TypeSpec::AllMask & ~TypeSpec::VoidMask, scope, prog) != TypeSpec::Int4Mask,
            ERR("Ambiguous type"));
 
-    TRY_B(expr.compile(ofile, scope, prog));
+    TRY_B(expr.compile(obj, scope, prog));
 
-    fprintf(ofile,
-            "jf dwl:$__loop_out_%p\n"
-            "; ) {\n"
-            , this);
+    TRY_B(obj.stkPull(1));
+    TRY_B(obj.stkPop());  // TODO: Check. This shouldn't overwrite the old value, but you never know
 
-    code.getScope()->setParent(scope);
-    TRY_B(code.compile(ofile, rtype, prog));
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::test_rm32_r32)
+        .setRmReg(obj.stkTos(0))
+        .setR(obj.stkTos(0));
 
-    fprintf(ofile,
-            "jmp dwl:$__loop_in_%p\n"
-            "$__loop_out_%p:\n"
-            "; }\n"
-            , this, this);
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::jz_rel32)
+        .setDisp(0);  // TODO: SYMBOL!!! (endLbl)
+
+    code.getScope()->setParent(scope);  // TODO: Maybe get rid of all of those and fix this in the parser
+    TRY_B(code.compile(obj, rtype, prog));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::jmp_rel32)
+        .setDisp(0);  // TODO: SYMBOL!!! (loopLbl)
+
+    TRY_B(obj.placeLabel(endLbl));
 
     return false;
 }
 
 bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
-    // TODO: Same as for the loop
     // TODO: Maybe simplify the empty else
-
-    fprintf(ofile,
-            "; if (\n");
 
     TRY_BC(expr.deduceType(TypeSpec::AllMask & ~TypeSpec::VoidMask, scope, prog) != TypeSpec::Int4Mask,
            ERR("Ambiguous type"));
 
-    TRY_B(expr.compile(ofile, scope, prog));
+    TRY_B(expr.compile(obj, scope, prog));
 
-    fprintf(ofile,
-            "jt dwl:$__cond_t_%p\n"
-            "jmp dwl:$__cond_f_%p\n"
-            "; ) {\n"
-            "$__cond_t_%p:\n"
-            , this, this, this);
+    unsigned elseLbl = obj.reserveLabel();
+    unsigned  endLbl = obj.reserveLabel();
+
+    TRY_B(obj.stkPull(1));
+    TRY_B(obj.stkPop());  // TODO: Check
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::test_rm32_r32)
+        .setRmReg(obj.stkTos(0))
+        .setR(obj.stkTos(0));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::jz_rel32)
+        .setDisp(0);  // TODO: SYMBOL!!! (elseLbl)
 
     code.getScope()->setParent(scope);
-    TRY_B(code.compile(ofile, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog));
 
-    fprintf(ofile,
-            "jmp dwl:$__cond_end_%p\n"
-            "; } else {\n"
-            "$__cond_f_%p:\n"
-            , this, this);
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::jmp_rel32)
+        .setDisp(0);  // TODO: SYMBOL!!! (endLbl)
+
+    TRY_B(obj.placeLabel(elseLbl));
 
     altCode.getScope()->setParent(scope);
-    TRY_B(altCode.compile(ofile, rtype, prog));
+    TRY_B(altCode.compile(obj, rtype, prog));
 
-    fprintf(ofile,
-            "$__cond_end_%p:\n"
-            "; }\n"
-            , this);
+    TRY_B(obj.placeLabel(endLbl));
 
     return false;
 }
@@ -2469,21 +2542,20 @@ bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
 bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
     TRY_B(scope->addVar(&var));
 
-    // TODO: More precise logging (type, etc.)
-    fprintf(ofile,
-            "; var %.*s\n",
-            var.getName()->getLength(), var.getName()->getStr());
-
     TypeSpec::Mask mask = expr.deduceType(TypeSpec::VoidMask | var.getType().getMask(), scope, prog);
 
-    TRY_B(expr.compile(ofile, scope, prog));  // TODO: Expr again
+    TRY_B(expr.compile(obj, scope, prog));  // TODO: Expr again
 
     if (mask != TypeSpec::VoidMask) {
-        fprintf(ofile,
-                "; = \n"
-                "pop ");
-        TRY_B(var.compile(ofile, scope));
-        fprintf(ofile, "\n");
+        TRY_B(obj.stkPull(1));
+        TRY_B(obj.stkPop());  // TODO: Check
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::mov_rm32_r32)
+            .setR(obj.stkTos(0));
+
+        TRY_B(var.reference(obj.getLastInstr(), scope));
     }
 
     return false;
@@ -2492,10 +2564,10 @@ bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpe
 bool Statement::VMIN(Expr, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
     TypeSpec::Mask mask = expr.deduceType(TypeSpec::AllMask, scope, prog);
 
-    TRY_B(expr.compile(ofile, scope, prog));  // Ambiguousness of the mask is checked inside
+    TRY_B(expr.compile(obj, scope, prog));  // Ambiguousness of the mask is checked inside
 
     if (mask != TypeSpec::VoidMask) {
-        fprintf(ofile, "popv\n");
+        TRY_B(obj.stkPop());
     }
 
     return false;
@@ -2649,33 +2721,27 @@ bool Function::makeCode(Code** out_code) {
 
 bool Function::registerArgs() {
     for (unsigned i = 0; i < args.getSize(); ++i) {
-        TRY_B(code.getScope()->addVar(&args[i]));
+        TRY_B(code.getScope()->addArg(&args[i], i));
     }
 
     return false;
 }
 
 bool Function::compile(ObjectFactory &obj, const Program *prog) {
-    fprintf(ofile, "\n$__func_%.*s:\n", name->getLength(), name->getStr());
+    // TODO: Special handling for export and import!!!
 
-    // TODO: Maybe do it a bit less manually, at the cost of speed
+    // TODO: Create a symbol for this!
 
-    uint32_t offset = code.getScope()->getFrameSize();
-
-    for (unsigned i = args.getSize() - 1; i != (unsigned)-1; --i) {
-        offset -= args[i].getType().getSize();
-
-        assert(offset < (uint32_t)-1000);  // Checks that it isn't negative
-
-        fprintf(ofile, "pop ");
-        TRY_B(args[i].getType().compile(ofile));
-        fprintf(ofile, "[rz+%u]\n", offset);
-    }
+    // This time I don't need to pop arguments away, and I can instead address them directly from the stack
 
     code.getScope()->setParent(nullptr);
-    TRY_B(code.compile(ofile, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog));
 
-    fprintf(ofile, "ret  ; Force end of $%.*s\n\n", name->getLength(), name->getStr());
+    TRY_B(obj.stkFlush());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::ret);  // Force end of function
 
     return false;
 }
@@ -2750,26 +2816,18 @@ void Program::popFunction() {
 }
 
 bool Program::compile(ObjectFactory &obj) {
-    fprintf(ofile,
-            "; === [ ALFC ver. NULL ] ===\n\n"
-            "; Entrypoint + loader:\n"
-            "$main:\n"
-            "    push dwl:4096\n"
-            "    pop dwl:rz  ; Function frame counter\n"
-            "    call dwl:$__func_main\n"  // TODO: If we decide to actually have void as zero, popv needs to be placed here
-            "    end\n"
-            "\n");
+    // TODO: Entrypoint will be in the standard library
 
-    bool seenMain = false;
+    bool seenMain = false;  // TODO: Unnecessary with external linkage
 
     for (unsigned i = 0; i < functions.getSize(); ++i) {
-         TRY_B(functions[i].compile(ofile, this));
+         TRY_B(functions[i].compile(obj, this));
 
          seenMain |= functions[i].isMain();
      }
 
     if (seenMain) {
-        ERR("No main function present. (If it exists, make sure it doesn't return anything)");
+        ERR("Warning: No main function present. (If it exists, make sure it doesn't return anything)");
     }
 
     return false;

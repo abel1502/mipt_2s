@@ -1,4 +1,4 @@
-#define TEST
+//#define TEST
 
 #include <cstdio>
 #include <cstdlib>
@@ -180,11 +180,13 @@ int main(int argc, char **argv) {
             return 3;
         }
 
-        if (of.compile(ofile)) {  // TODO: Also a switch
+        /*if (of.compile(ofile)) {  // TODO: Also a switch
             ERR("Failed to write the compiled code to the output object file");
 
             return 3;
-        }
+        }*/
+
+        of.dump();
     }
 
     printf("Done.\n\n");
@@ -223,12 +225,12 @@ void test() {
 
     REQUIRE(!pi.ctor());
 
-    REQUIRE(!instr.compile(pi, 32));
+    REQUIRE(!instr.compile(pi));
 
     char buf[32] = "";
     char *cur = buf;
 
-    REQUIRE(!pi.compile(&cur));
+    REQUIRE(!pi.compile(&cur, 32));
 
     pi.hexDump();
 

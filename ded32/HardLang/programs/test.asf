@@ -8,12 +8,14 @@ def main() {
     a = (b + 7 - 1) / 2;
     /* Test block comment 
     */if a > 10 {
-        _print_int8(int8:a);
+        //_print_int8(int8:a);
+		a %= 999;
     } else {
-        _print_dbl(dbl:a + 0xff.ff);
+        //_print_dbl(dbl:a + 0xff.ff);
+		b = (b + a) * 17 / 0;
     }
     
-    _print_int4(a + b);
+    //_print_int4(a + b);
     
     ret;
 }

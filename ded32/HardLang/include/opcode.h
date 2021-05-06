@@ -168,8 +168,6 @@ public:
 
     unsigned getLength() const;
 
-    bool compile(PackedInstruction &pi, unsigned limit) const;
-
     bool compile(PackedInstruction &pi) const;
 
     //static Opcode_e getSizeVariant(OpcodeCat_e oc, size_e size);

@@ -231,7 +231,7 @@ struct PackedInstruction {
 
     unsigned getLength() const;
 
-    bool compile(char **dest) const;
+    bool compile(char **dest, unsigned limit) const;
 
 };
 
@@ -300,6 +300,8 @@ public:
     //--------------------------------------------------------------------------------
 
     result_e compile(FILE *ofile) const;
+
+    void dump() const;
 
 private:
     mutable result_e lastResult;
