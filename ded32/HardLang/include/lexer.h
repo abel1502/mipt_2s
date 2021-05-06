@@ -115,7 +115,7 @@ public:
         return col;
     }
 
-    //bool reconstruct(const char *dest; unsigned limit);
+    void reconstruct(char *dest, unsigned limit) const;
 
 private:
     Type_e type;
