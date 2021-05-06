@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
+#include <type_traits>
 
 
 namespace abel {
@@ -30,10 +31,21 @@ public:
         return false;
     }
 
+    bool ctor(unsigned new_capacity) {
+        TRY_B(ctor());
+
+        TRY_B(resize(new_capacity));
+
+        return false;
+    }
+
+    template <typename = void>
     void dtor() {
-        for (unsigned i = 0; i < size; ++i) {
-            buf[i].dtor();
-            //buf[i] = {};
+        if constexpr (HAS_FACTORIES(T)) {
+            for (unsigned i = 0; i < size; ++i) {
+                buf[i].dtor();
+                //buf[i] = {};
+            }
         }
 
         free(buf);
@@ -72,7 +84,9 @@ public:
             assert(capacity > size);
         }
 
-        size++;
+        if constexpr (HAS_FACTORIES(T)) {
+            buf[size++].ctor();
+        }
 
         return false;
     }
@@ -142,6 +156,7 @@ private:
         TRY_B(!newBuf);
 
         buf = newBuf;
+
         capacity = new_capacity;
 
         return false;
