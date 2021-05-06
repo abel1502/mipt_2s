@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <cassert>
+#include <cstdio>
 
 
 namespace abel {
@@ -8,42 +9,31 @@ namespace abel {
 bool Parser::ctor() {
     TRY_B(lexer.ctor());
 
+    TRY_B(errorStack.ctor());
+
     return false;
 }
 
 bool Parser::ctor(const FileBuf *src) {
     TRY_B(lexer.ctor(src));
 
+    TRY_B(errorStack.ctor());
+
     return false;
 }
 
 void Parser::dtor() {
     lexer.dtor();
+    errorStack.dtor();
 }
 
-inline const Token *Parser::cur() const {
-    return lexer.cur();
-}
+/*void Parser::reportError() const {
+    if (errIdx == -1u) {
+        return;
+    }
 
-inline const Token *Parser::peek(int delta) const {
-    return lexer.peek(delta);
-}
-
-inline const Token *Parser::next() {
-    return lexer.next();
-}
-
-inline const Token *Parser::prev() {
-    return lexer.prev();
-}
-
-inline unsigned Parser::backup() const {
-    return lexer.backup();
-}
-
-inline void Parser::restore(unsigned saved) {
-    lexer.restore(saved);
-}
+    printf("Syntax error at token #%u:\n", errIdx);
+}*/
 
 #define P_TRY(STMT, ONSUCC, ONFAIL) {   \
     switch (STMT) {                     \
@@ -52,12 +42,10 @@ inline void Parser::restore(unsigned saved) {
         break;                          \
     case ERR_PARSER_SYS:                \
         return ERR_PARSER_SYS;          \
-    case ERR_PARSER_LEX:                \
-        assert(false);                  \
-        return ERR_PARSER_LEX;          \
     case ERR_PARSER_SYNTAX:             \
         ONFAIL;                         \
         break;                          \
+    case ERR_PARSER_LEX:                \
     default:                            \
         assert(false);                  \
         break;                          \
@@ -93,6 +81,8 @@ inline void Parser::restore(unsigned saved) {
 #define P_REQ_NONTERM(NONTERM, ...) \
     P_TRY(parse_##NONTERM(__VA_ARGS__), , goto error)
 
+//#define P_
+
 Parser::Error_e Parser::parse(Program *prog) {
     assert(prog);
 
@@ -116,7 +106,7 @@ Parser::Error_e Parser::parse(Program *prog) {
 error:
     prog->dtor();  // Most of the things are cleaned up here (in a recursive destructor), so
                    // functionwise error's should only care about destroying the objects they
-    P_BAD();       // had created within their respective functions
+    P_BAD();       // have created within their respective functions
 }
 
 Parser::Error_e Parser::parse_FUNC_DEFS(Program *prog) {

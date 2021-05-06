@@ -5,6 +5,7 @@
 #include "filebuf.h"
 #include "lexer.h"
 #include "ast.h"
+#include "vector.h"
 
 
 namespace abel {
@@ -38,23 +39,40 @@ public:
 
     void dtor();
 
-    inline const Token *cur() const;
+    inline const Token *cur() const{
+        return lexer.cur();
+    }
 
-    inline const Token *peek(int delta) const;
+    inline const Token *peek(int delta) const {
+        return lexer.peek(delta);
+    }
 
-    inline const Token *next();
+    inline const Token *next() {
+        return lexer.next();
+    }
 
-    inline const Token *prev();
+    inline const Token *prev() {
+        return lexer.prev();
+    }
 
-    inline unsigned backup() const;
+    inline unsigned backup() const {
+        return lexer.backup();
+    }
 
-    inline void restore(unsigned saved);
+    inline void restore(unsigned saved) {
+        lexer.restore(saved);
+    }
 
     Error_e parse(Program *prog);
+
+    //void reportError() const;
 
 private:
 
     Lexer lexer;
+
+    Vector<unsigned> errorStack;
+
 
     Error_e parse_FUNC_DEFS(Program *prog);
 

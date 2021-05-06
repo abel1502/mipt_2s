@@ -1,16 +1,16 @@
 # depslib dependency file v1.0
-1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\filebuf.cpp
+1620303102 source:d:\workspace\.mipt\s2\ded32\hardlang\source\filebuf.cpp
 	"filebuf.h"
 	<cassert>
 	<cctype>
 
-1618826529 d:\workspace\.mipt\s2\ded32\hardlang\\include\\filebuf.h
+1620302901 d:\workspace\.mipt\s2\ded32\hardlang\\include\\filebuf.h
 	"general.h"
 	<cstdio>
 	<cstdlib>
 	<sys/stat.h>
 
-1620292474 d:\workspace\.mipt\s2\ded32\hardlang\\include\\general.h
+1620307211 d:\workspace\.mipt\s2\ded32\hardlang\\include\\general.h
 	<new>
 
 1618828489 source:d:\workspace\.mipt\s2\ded32\hardlang\source\general.cpp
@@ -19,7 +19,7 @@
 	<cerrno>
 	"general.h"
 
-1618826529 source:d:\workspace\.mipt\s2\ded32\hardlang\source\lexer.cpp
+1620308339 source:d:\workspace\.mipt\s2\ded32\hardlang\source\lexer.cpp
 	"lexer.h"
 	<cstdlib>
 	<cmath>
@@ -33,7 +33,7 @@
 	"tokens.dsl.h"
 	"tokens.dsl.h"
 
-1618850975 d:\workspace\.mipt\s2\ded32\hardlang\\include\\lexer.h
+1620302673 d:\workspace\.mipt\s2\ded32\hardlang\\include\\lexer.h
 	"general.h"
 	"filebuf.h"
 	<cstdlib>
@@ -76,11 +76,12 @@
 	"opcode.h"
 	"object.h"
 
-1618826529 d:\workspace\.mipt\s2\ded32\hardlang\\include\\parser.h
+1620304914 d:\workspace\.mipt\s2\ded32\hardlang\\include\\parser.h
 	"general.h"
 	"filebuf.h"
 	"lexer.h"
 	"ast.h"
+	"vector.h"
 
 1620299118 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
 	"general.h"
@@ -103,7 +104,7 @@
 	"stmttypes.dsl.h"
 	"stmttypes.dsl.h"
 
-1619466873 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
+1620308408 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
 	"general.h"
 	<cstdlib>
 	<cstring>
@@ -115,11 +116,12 @@
 
 1608279340 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\stmttypes.dsl.h
 
-1619468725 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
+1620304901 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
 	"parser.h"
 	<cassert>
+	<cstdio>
 
-1620299087 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+1620300894 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
 	"ast.h"
 	"exprtypes.dsl.h"
 	"pseudofuncs.dsl.h"
@@ -148,7 +150,7 @@
 	"object.h"
 	"opcode_enums.h"
 
-1620291966 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
+1620300225 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
 	"opcode.h"
 	<initializer_list>
 	<cassert>
