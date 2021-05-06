@@ -211,11 +211,7 @@ VarInfo Scope::getInfo(const Var *var) const {
 VarInfo Scope::getInfo(const Token *name) const {
     const Scope *cur = this;
 
-    uint32_t skipped = 0;
-
     while (cur && !cur->vars.has(name->getStr(), name->getLength())) {
-        skipped += cur->getFrameSize();
-
         cur = cur->parent;
     }
 
@@ -223,7 +219,7 @@ VarInfo Scope::getInfo(const Token *name) const {
         return {0, nullptr};
 
     VarInfo vi = cur->vars.get(name->getStr(), name->getLength());
-    vi.offset += curDelta - skipped;
+    vi.offset += curDelta;
     return vi;
 }
 
@@ -275,6 +271,12 @@ void Scope::setParent(const Scope *new_parent) {
     //assert(parent == nullptr || parent == new_parent || new_parent == nullptr);
 
     parent = new_parent;
+
+    if (parent) {
+        assert(curOffset == 0);
+
+        curOffset = parent->curOffset;
+    }
 }
 
 uint32_t Scope::getFrameSize() const {
