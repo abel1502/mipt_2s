@@ -74,8 +74,8 @@ public:
         return line;
     }
 
-    inline unsigned getSymb() const {
-        return line;
+    inline unsigned getCol() const {
+        return col;
     }
 
 private:
@@ -83,7 +83,7 @@ private:
     size_t pos;
 
     unsigned line;
-    unsigned symb;
+    unsigned col;
 
 };
 
