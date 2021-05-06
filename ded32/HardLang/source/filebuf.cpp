@@ -131,7 +131,7 @@ bool FileBufIterator::ctor() {
     pos = 0;
 
     line = 0;
-    symb = 0;
+    col = 0;
 
     return false;
 }
@@ -143,7 +143,7 @@ bool FileBufIterator::ctor(const FileBuf *new_buf) {
     pos = 0;
 
     line = 0;
-    symb = 0;
+    col = 0;
 
     return false;
 }
@@ -153,7 +153,7 @@ void FileBufIterator::dtor() {
     pos = 0;
 
     line = 0;
-    symb = 0;
+    col = 0;
 }
 
 char FileBufIterator::cur() const {
@@ -179,9 +179,9 @@ char FileBufIterator::next() {
 
     if (tmp == '\n') {
         line++;
-        symb = 0;
+        col = 0;
     } else {
-        symb++;
+        col++;
     }
 
     return tmp;
@@ -195,9 +195,9 @@ char FileBufIterator::prev() {
 
     if (cur() == '\n') {
         line--;
-        symb = 0;  // We can't restore this here, but whatever, I guess...
+        col = 0;  // We can't restore this here, but whatever, I guess...
     } else {
-        symb--;
+        col--;
     }
 
     return tmp;

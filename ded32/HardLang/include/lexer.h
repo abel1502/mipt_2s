@@ -102,17 +102,17 @@ public:
 
     void dump() const;
 
-    inline void setPos(unsigned new_line, unsigned new_symb) {
+    inline void setPos(unsigned new_line, unsigned new_col) {
         line = new_line;
-        symb = new_symb;
+        col = new_col;
     }
 
     inline unsigned getLine() const {
         return line;
     }
 
-    unsigned getSymb() const {
-        return symb;
+    unsigned getCol() const {
+        return col;
     }
 
     //bool reconstruct(const char *dest; unsigned limit);
@@ -121,7 +121,7 @@ private:
     Type_e type;
 
     unsigned line;
-    unsigned symb;
+    unsigned col;
 
     union {
         // TOK_KWD

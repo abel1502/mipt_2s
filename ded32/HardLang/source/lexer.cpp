@@ -13,7 +13,7 @@ bool Token::ctor() {
     type = TOK_ERROR;
 
     line = 0;
-    symb = 0;
+    col = 0;
 
     return false;
 }
@@ -21,17 +21,11 @@ bool Token::ctor() {
 bool Token::ctorEnd() {
     type = TOK_END;
 
-    line = 0;
-    symb = 0;
-
     return false;
 }
 
 bool Token::ctorErr() {
     type = TOK_ERROR;
-
-    line = 0;
-    symb = 0;
 
     return false;
 }
@@ -41,9 +35,6 @@ bool Token::ctorName(const char *new_start, unsigned new_length) {
 
     type = TOK_NAME;
 
-    line = 0;
-    symb = 0;
-
     start = new_start;
     length = new_length;
 
@@ -52,9 +43,6 @@ bool Token::ctorName(const char *new_start, unsigned new_length) {
 
 bool Token::ctorNum(unsigned long long new_integer, double new_fraction, int new_exp, bool new_intFlag) {
     type = TOK_NUM;
-
-    line = 0;
-    symb = 0;
 
     integer = new_integer;
     fraction = new_fraction;
@@ -67,9 +55,6 @@ bool Token::ctorNum(unsigned long long new_integer, double new_fraction, int new
 bool Token::ctorKwd(Token::Kwd_e new_kwd) {
     type = TOK_KWD;
 
-    line = 0;
-    symb = 0;
-
     kwd = new_kwd;
 
     return false;
@@ -77,9 +62,6 @@ bool Token::ctorKwd(Token::Kwd_e new_kwd) {
 
 bool Token::ctorPunct(Token::Punct_e new_punct) {
     type = TOK_PUNCT;
-
-    line = 0;
-    symb = 0;
 
     punct = new_punct;
 
@@ -274,8 +256,10 @@ void Token::dump() const {
         }
 
         break;
-    default:
-        assert(false);
+
+    NODEFAULT
+    }
+}
         break;
     }
 }
@@ -434,7 +418,7 @@ bool Lexer::parseTok(Token *dest, FileBufIterator *iter) {
 
     skipSpace(iter);
 
-    dest->setPos(iter->getLine(), iter->getSymb());
+    dest->setPos(iter->getLine(), iter->getCol());
 
     char tmp = iter->cur();
 
@@ -499,7 +483,7 @@ bool Lexer::parseNumber(Token *dest, FileBufIterator *iter) {
 
     int curDigit = recognizeDigit(iter->cur());
 
-    while (curDigit >= 0 && curDigit < base) {
+    while (curDigit >= 0) {
         iter->next();
 
         integerLen++;  // TODO: limit?
@@ -507,6 +491,12 @@ bool Lexer::parseNumber(Token *dest, FileBufIterator *iter) {
         integer = integer * base + curDigit;
 
         curDigit = recognizeDigit(iter->cur());
+
+        if (curDigit >= base) {
+            ERR("Syntax error: unexpected digit '%c' for base %d", iter->cur(), base);
+
+            return false;
+        }
     }
 
     bool isInteger = true;
@@ -569,7 +559,7 @@ bool Lexer::parseNumber(Token *dest, FileBufIterator *iter) {
     }
 
     if (integerLen == 0 && isInteger) {
-        ERR("Syntex error: malformed number");
+        ERR("Syntax error: malformed number");
 
         TRY_B(dest->ctorErr());
 
