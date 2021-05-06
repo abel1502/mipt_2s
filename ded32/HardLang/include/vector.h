@@ -182,17 +182,15 @@ public:
     }
 
     void dtor() {
-        if (isCompact()) {
-            // Compact buf is intended for use on built-in types without dtors, I guess
-
-            for (unsigned i = 0; i < size; ++i) {
-                //compactBuf[i].dtor();
-                compactBuf[i] = {};
-            }
-        } else {
-            for (unsigned i = 0; i < size; ++i) {
-                //buf[i].dtor();
-                buf[i] = {};
+        if constexpr (HAS_FACTORIES(T)) {
+            if (isCompact()) {
+                for (unsigned i = 0; i < size; ++i) {
+                    compactBuf[i].dtor();
+                }
+            } else {
+                for (unsigned i = 0; i < size; ++i) {
+                    buf[i] = {};
+                }
             }
         }
 
@@ -232,6 +230,8 @@ public:
 
         return buf[ind];
     }
+
+    // I guess compact vector can exist without an empty append
 
     bool append(const T &value) {
         if (isCompact()) {
