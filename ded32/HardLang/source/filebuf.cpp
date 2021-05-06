@@ -130,6 +130,9 @@ bool FileBufIterator::ctor() {
     buf = nullptr;
     pos = 0;
 
+    line = 0;
+    symb = 0;
+
     return false;
 }
 
@@ -139,12 +142,18 @@ bool FileBufIterator::ctor(const FileBuf *new_buf) {
     buf = new_buf;
     pos = 0;
 
+    line = 0;
+    symb = 0;
+
     return false;
 }
 
 void FileBufIterator::dtor() {
     buf = nullptr;
     pos = 0;
+
+    line = 0;
+    symb = 0;
 }
 
 char FileBufIterator::cur() const {
@@ -168,6 +177,13 @@ char FileBufIterator::next() {
 
     pos++;
 
+    if (tmp == '\n') {
+        line++;
+        symb = 0;
+    } else {
+        symb++;
+    }
+
     return tmp;
 }
 
@@ -176,6 +192,13 @@ char FileBufIterator::prev() {
 
     pos--;  // Going below zero is pretty much synonymous to going out of bounds,
             // so we don't need extra checks for this either.
+
+    if (cur() == '\n') {
+        line--;
+        symb = 0;  // We can't restore this here, but whatever, I guess...
+    } else {
+        symb--;
+    }
 
     return tmp;
 }

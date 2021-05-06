@@ -70,9 +70,20 @@ public:
 
     const char *getPtr() const;
 
+    inline unsigned getLine() const {
+        return line;
+    }
+
+    inline unsigned getSymb() const {
+        return line;
+    }
+
 private:
     const FileBuf *buf;
     size_t pos;
+
+    unsigned line;
+    unsigned symb;
 
 };
 
