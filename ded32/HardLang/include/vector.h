@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
-#include <type_traits>
 
 
 namespace abel {
