@@ -9,31 +9,28 @@ namespace abel {
 bool Parser::ctor() {
     TRY_B(lexer.ctor());
 
-    TRY_B(errorStack.ctor());
-
     return false;
 }
 
 bool Parser::ctor(const FileBuf *src) {
     TRY_B(lexer.ctor(src));
 
-    TRY_B(errorStack.ctor());
-
     return false;
 }
 
 void Parser::dtor() {
     lexer.dtor();
-    errorStack.dtor();
 }
 
-/*void Parser::reportError() const {
-    if (errIdx == -1u) {
-        return;
-    }
+void Parser::reportError() const {
+    constexpr unsigned BUF_SIZE = 96;
 
-    printf("Syntax error at token #%u:\n", errIdx);
-}*/
+    char buf[BUF_SIZE] = "";
+
+    lexer.cur()->reconstruct(buf, BUF_SIZE);
+
+    printf("Syntax error at line %u, col %u, at '%.*s' token.\n", lexer.cur()->getLine(), lexer.cur()->getCol(), BUF_SIZE, buf);
+}
 
 #define P_TRY(STMT, ONSUCC, ONFAIL) {   \
     switch (STMT) {                     \
@@ -60,11 +57,11 @@ void Parser::dtor() {
     }                                   \
 }
 
-#define P_OK() \
-    return ERR_PARSER_OK;
+#define P_OK()                  \
+    return ERR_PARSER_OK
 
-#define P_BAD() \
-    return ERR_PARSER_SYNTAX;
+#define P_BAD()                 \
+    return ERR_PARSER_SYNTAX
 
 #define P_REQ_KWD(KWD)                                                                              \
     if (cur()->getKwd() != Token::KWD_##KWD) { /* Will automatically account for non-kwd tokens */  \
@@ -81,7 +78,6 @@ void Parser::dtor() {
 #define P_REQ_NONTERM(NONTERM, ...) \
     P_TRY(parse_##NONTERM(__VA_ARGS__), , goto error)
 
-//#define P_
 
 Parser::Error_e Parser::parse(Program *prog) {
     assert(prog);
@@ -106,7 +102,8 @@ Parser::Error_e Parser::parse(Program *prog) {
 error:
     prog->dtor();  // Most of the things are cleaned up here (in a recursive destructor), so
                    // functionwise error's should only care about destroying the objects they
-    P_BAD();       // have created within their respective functions
+                   // have created within their respective functions
+    P_BAD();
 }
 
 Parser::Error_e Parser::parse_FUNC_DEFS(Program *prog) {
@@ -802,5 +799,7 @@ error:
 #undef P_REQ_KWD
 #undef P_REQ_PUNCT
 #undef P_REQ_NONTERM
+#undef P_ERR
+#undef P_ERR_CANCEL
 
 }

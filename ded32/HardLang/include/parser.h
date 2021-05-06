@@ -65,13 +65,11 @@ public:
 
     Error_e parse(Program *prog);
 
-    //void reportError() const;
+    void reportError() const;
 
 private:
 
     Lexer lexer;
-
-    Vector<unsigned> errorStack;
 
 
     Error_e parse_FUNC_DEFS(Program *prog);

@@ -149,6 +149,9 @@ int main(int argc, char **argv) {
 
     case Parser::ERR_PARSER_SYNTAX:
         ERR("Syntax error\n");
+
+        parser.reportError();
+
         return 3;
 
     case Parser::ERR_PARSER_SYS:
