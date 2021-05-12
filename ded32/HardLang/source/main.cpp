@@ -91,12 +91,12 @@ int main(int argc, char **argv) {
 
             break;
         case 'o':
-            ofile = fopen(optarg, "w");
+            ofile = fopen(optarg, "wb");
 
             if (!ofile) {
                 CLEANUP_
 
-                ERR("Couldn't open %s to read", optarg);
+                ERR("Couldn't open %s to write", optarg);
                 return 2;
             }
 
@@ -145,14 +145,14 @@ int main(int argc, char **argv) {
 
     case Parser::ERR_PARSER_LEX:
         ERR("Syntax error (lexical)\n");
-        return 3;
+        return 4;
 
     case Parser::ERR_PARSER_SYNTAX:
         ERR("Syntax error\n");
 
         parser.reportError();
 
-        return 3;
+        return 4;
 
     case Parser::ERR_PARSER_SYS:
         ERR("System error\n");
@@ -180,16 +180,42 @@ int main(int argc, char **argv) {
                 " file is writable and if that doesn't help, report the\n"
                 " problem at github.com/abel1502/mipt_1s )");
 
-            return 3;
+            return 4;
         }
 
-        /*if (of.compile(ofile)) {  // TODO: Also a switch
-            ERR("Failed to write the compiled code to the output object file");
+        //of.dump();
 
-            return 3;
-        }*/
+        switch (of.compile(ofile)) {  // TODO: Also a switch
+        case of.R_OK:
+            break;
 
-        of.dump();
+        case of.R_BADMEMORY:
+            ERR("Encountered a memory error while assembling the object file");
+            return 4;
+
+        case of.R_BADPTR:
+            ERR("Encountered a pointer error while assembling the object file");
+            return 4;
+
+        case of.R_BADSIZE:
+            ERR("Encountered a size error while assembling the object file");
+            return 4;
+
+        case of.R_BADIO:
+            ERR("Encountered an IO error while assembling the object file");
+            return 4;
+
+        case of.R_BADSYMBOL:
+            ERR("Encountered a corrupt symbol while assembling the object file");
+            return 4;
+
+        case of.R_BADINSTR:
+            ERR("Encountered a corrupt instruction while assembling the object file");
+            return 4;
+
+        case of.R_NOTIMPL:
+        NODEFAULT
+        }
     }
 
     printf("Done.\n\n");
