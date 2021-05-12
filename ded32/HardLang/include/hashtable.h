@@ -16,6 +16,12 @@ namespace abel {
 /// Warning: T WILL be copied a lot, so either make it simple enough or store it by pointers
 template <typename T>
 class Hashtable {
+
+    static_assert(!HAS_FACTORIES(T), "Hashtable frequently moves its data, "
+                                     "and passes node contents by value, so "
+                                     "it is preferable to avoid complex types "
+                                     "for it");
+
 public:
     #undef R_OK
 
