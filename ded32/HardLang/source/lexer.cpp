@@ -264,30 +264,30 @@ void Token::dump() const {
 void Token::reconstruct(char *dest, unsigned limit) const {
     switch (getType()) {
     case Token::TOK_END:
-        snprintf(dest, limit - 1, "<End of file>");
+        snprintf(dest, limit, "<End of file>");
         break;
 
     case Token::TOK_ERROR:
-        snprintf(dest, limit - 1, "<ERROR>");
+        snprintf(dest, limit, "<ERROR>");
         break;
 
     case Token::TOK_KWD:
-        snprintf(dest, limit - 1, "%s", strKwd());
+        snprintf(dest, limit, "%s", strKwd());
         break;
 
     case Token::TOK_PUNCT:
-        snprintf(dest, limit - 1, "%s", strPunct());
+        snprintf(dest, limit, "%s", strPunct());
         break;
 
     case Token::TOK_NAME:
-        snprintf(dest, limit - 1, "%.*s", length, start);
+        snprintf(dest, limit, "%.*s", length, start);
         break;
 
     case Token::TOK_NUM:
         if (isInteger()) {
-            snprintf(dest, limit - 1, "%llu", asInt());
+            snprintf(dest, limit, "%llu", asInt());
         } else {
-            snprintf(dest, limit - 1, "%lg", asDbl());
+            snprintf(dest, limit, "%lg", asDbl());
         }
 
         break;
@@ -526,6 +526,8 @@ bool Lexer::parseNumber(Token *dest, FileBufIterator *iter) {
 
         if (curDigit >= base) {
             ERR("Syntax error: unexpected digit '%c' for base %d", iter->cur(), base);
+
+            TRY_B(dest->ctorErr());
 
             return false;
         }
