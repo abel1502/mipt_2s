@@ -93,14 +93,20 @@ bool Instruction::ctor() {
     r.reg    = REG_A;
 
     imm.val_qu = 0;
+
     disp.val_qu = 0;
+    TRY_B(disp.symbol.ctorNone());
 
     removed = false;
+
+    TRY_B(symbolHere.ctorNone());
 
     return false;
 }
 
 void Instruction::dtor() {
+    disp.symbol.dtor();
+    symbolHere.dtor();
 }
 
 bool Instruction::compile(PackedInstruction &pi) const {
@@ -274,6 +280,24 @@ Instruction &Instruction::setDisp(int64_t value) {
     return *this;
 }
 
+/*Instruction &Instruction::setDispLabel(unsigned idx) {
+    REQUIRE(!disp.symbol.ctorLabel(idx));
+
+    return *this;
+}
+
+Instruction &Instruction::setDispFunc(const Token *name) {
+    REQUIRE(!disp.symbol.ctorFunction(name));
+
+    return *this;
+}
+
+Instruction &Instruction::setDispFunc(const char *name, unsigned length) {
+    REQUIRE(!disp.symbol.ctorFunction(name, length));
+
+    return *this;
+}*/
+
 Instruction &Instruction::setImm(int64_t value) {
     imm.val_q = value;
 
@@ -339,9 +363,71 @@ unsigned Instruction::getLength(unsigned prefSize, unsigned opSize, unsigned rmS
     return length;
 }
 
+unsigned Instruction::getDispOffset(unsigned *ripOffset) const {
+    switch (op) {
+        #include "opcodes.dslctx.h"
+
+        #define OPDEF(NAME, BYTES, RMSIZE, RSIZE, DISPSIZE, IMMSIZE, VARIANT, REQPREFIX)                        \
+            case Opcode_e::NAME: {                                                                              \
+                static_assert(RMSIZE == -1 || DISPSIZE == -1);                                                  \
+                                                                                                                \
+                constexpr unsigned prefSize = std::initializer_list<uint8_t>REQPREFIX.size();                   \
+                constexpr unsigned opSize = std::initializer_list<uint8_t>BYTES.size();                         \
+                                                                                                                \
+                return getDispOffset(prefSize, ripOffset, opSize, RMSIZE, RSIZE, DISPSIZE, IMMSIZE);                                                                                        \
+            };
+
+        #include "opcodes.dsl.h"
+
+        #undef OPDEF
+
+    NODEFAULT
+    }
+
+    return -1;
+}
+
+unsigned Instruction::getDispOffset(unsigned prefSize, unsigned *ripOffset, unsigned opSize,
+                                    unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const {
+    unsigned length = 0;
+
+    length += prefSize + opSize;
+
+    if (needsRex(rmSize, rSize, dispSize, immSize)) {
+        length += 1;
+    }
+
+    length +=  rm.getLength(  rmSize)
+           +    r.getLength(   rSize);
+
+    if (ripOffset) {
+        *ripOffset = disp.getLength(dispSize)
+                   +  imm.getLength( immSize);
+
+        if (rmSize != -1u) {
+            switch (rm.mode.disp) {
+            case rm.mode.DISP_NONE:
+                break;
+
+            case rm.mode.DISP_8:
+                *ripOffset += 1;
+                break;
+
+            case rm.mode.DISP_32:
+                *ripOffset += 4;
+                break;
+
+            NODEFAULT
+            }
+        }
+    }
+
+    return length;
+}
+
 bool Instruction::needsRex(unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const {
-    return (rmSize != -1u && rm.usesRexReg()) ||
-           (rSize  != -1u &&  r.usesRexReg()) ||
+    return (rm.usesRexReg((size_e)rmSize)) ||
+           ( r.usesRexReg((size_e) rSize)) ||
            ((rmSize == SIZE_Q || rSize == SIZE_Q || dispSize == SIZE_Q || immSize == SIZE_Q) /* TODO: && not default 64 */);
 }
 

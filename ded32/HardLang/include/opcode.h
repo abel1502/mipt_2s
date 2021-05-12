@@ -4,6 +4,7 @@
 #include "general.h"
 #include "object.h"
 #include "opcode_enums.h"
+#include "symbol.h"
 
 
 namespace abel {
@@ -72,6 +73,8 @@ public:
             uint64_t val_qu;
         };
 
+        Symbol symbol;
+
         inline unsigned getLength(unsigned size) const {
             assert(size != SIZE_XMM);
 
@@ -82,8 +85,9 @@ public:
     struct OperandR {
         reg_e reg;
 
-        inline bool usesRexReg() const {
-            return reg >= REG_8;
+        inline bool usesRexReg(size_e rSize) const {
+            return rSize != -1u &&
+                   (reg >= REG_8 || (REG_SP <= reg && reg <= REG_DI && rSize == SIZE_B));
         }
 
         bool writeModRm(modrm_t &modrm) const;
@@ -101,10 +105,12 @@ public:
         reg_e index;
         scale_e scale;
 
-        inline bool usesRexReg() const {
-            return (reg >= REG_8 && (mode.mode <= mode.MODE_REG ||
-                                     (mode.mode == mode.MODE_MEM_SIB && mode.sib & mode.SIB_BASE))) ||
-                   (index >= REG_8 && mode.mode == mode.MODE_MEM_SIB && mode.sib & mode.SIB_INDEX);
+        inline bool usesRexReg(size_e rmSize) const {
+            return rmSize != -1u &&
+                   (((reg >= REG_8 || (REG_SP <= reg && reg <= REG_DI && rmSize == SIZE_B)) &&
+                     (mode.mode <= mode.MODE_MEM_REG || (mode.mode == mode.MODE_MEM_SIB && mode.sib & mode.SIB_BASE))) ||
+                    ((index >= REG_8 || (REG_SP <= reg && reg <= REG_DI && rmSize == SIZE_B)) &&
+                     (mode.mode == mode.MODE_MEM_SIB && mode.sib & mode.SIB_INDEX)));
         }
 
         bool writeModRm(modrm_t &modrm, sib_t &sib, bool &hasSib) const;
@@ -151,11 +157,13 @@ public:
 
     Instruction &setDisp(int64_t value);
 
-    //Instruction &setDisp(uint64_t value);
+    /*Instruction &setDispLabel(unsigned idx);
+
+    Instruction &setDispFunc(const Token *name);
+
+    Instruction &setDispFunc(const char *name, unsigned length = -1u);*/
 
     Instruction &setImm(int64_t value);
-
-    //Instruction &setImm(uint64_t value);
 
 
     inline bool isRemoved() const {
@@ -168,9 +176,25 @@ public:
 
     unsigned getLength() const;
 
+    unsigned getDispOffset(unsigned *ripOffset = nullptr) const;
+
     bool compile(PackedInstruction &pi) const;
 
-    //static Opcode_e getSizeVariant(OpcodeCat_e oc, size_e size);
+    inline Symbol *getDispSymbol() {
+        return &disp.symbol;
+    }
+
+    inline const Symbol *getDispSymbol() const {
+        return &disp.symbol;
+    }
+
+    inline Symbol *getSymbolHere() {
+        return &symbolHere;
+    }
+
+    inline const Symbol *getSymbolHere() const {
+        return &symbolHere;
+    }
 
 private:
     Opcode_e    op;
@@ -182,7 +206,7 @@ private:
 
     bool removed;
 
-    // TODO: Symbol references (for disp, for imm and for the instruction's address)
+    Symbol symbolHere;
 
     //--------------------------------------------------------------------------------
 
@@ -193,6 +217,9 @@ private:
 
     unsigned getLength(unsigned prefSize, unsigned opSize, unsigned rmSize,
                        unsigned rSize, unsigned dispSize, unsigned immSize) const;
+
+    unsigned getDispOffset(unsigned prefSize, unsigned *ripOffset, unsigned opSize,
+                           unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const;
 
     bool needsRex(unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize) const;
 
