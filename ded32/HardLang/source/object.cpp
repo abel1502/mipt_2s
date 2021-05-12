@@ -1,5 +1,11 @@
 #include "object.h"
 
+#include "hashtable.h"
+
+#include <windows.h>
+#include <ctime>
+#include <cstdlib>
+
 
 namespace abel {
 
@@ -212,8 +218,8 @@ unsigned PackedInstruction::getLength() const {
          + flags.getOpcodeSize()
          + flags.hasModrm()
          + flags.hasSib()
-         + (1 << flags.getDispSize())
-         + (1 << flags.getImmSize());
+         + (flags.getDispSize() != -1u ? 1 << flags.getDispSize() : 0)
+         + (flags.getImmSize()  != -1u ? 1 << flags.getImmSize()  : 0);
 }
 
 bool PackedInstruction::compile(char **dest, unsigned limit) const {
@@ -306,6 +312,8 @@ ObjectFactory::result_e ObjectFactory::ctor() {
     stkCurTos = 0;
     stkCurSize = 0;
 
+    bypass = false;
+
     return lastResult = R_OK;
 }
 
@@ -313,14 +321,21 @@ void ObjectFactory::dtor() {
     code.dtor();
 }
 
+void ObjectFactory::stkReset() {
+    stkCurTos = 0;
+    stkCurSize = 0;
+}
+
 reg_e ObjectFactory::stkTos(unsigned depth) const {
-    REQUIRE(depth <= stkCurSize);
+    REQUIRE(depth <= stkCurSize || bypass);
 
     return REGSTK_REGS[(REGSTK_SIZE + stkCurTos - depth) % REGSTK_SIZE];
 }
 
 ObjectFactory::result_e ObjectFactory::stkPush() {
     if (stkCurSize == REGSTK_SIZE) {
+        bypass = true;
+
         TRY(addInstr());
         getLastInstr().setOp(Opcode_e::add_rm64_imm32)
                       .setRmReg(REG_BP)
@@ -335,6 +350,8 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
         }
 
         stkCurSize = REGSTK_SIZE / 2;
+
+        bypass = false;
     }
 
     stkCurTos = (stkCurTos + 1) % REGSTK_SIZE;
@@ -345,6 +362,8 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
 
 ObjectFactory::result_e ObjectFactory::stkPop() {
     if (stkCurSize == 0) {
+        bypass = true;
+
         TRY(addInstr());
         getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
                       .setRmReg(REG_BP)
@@ -359,6 +378,8 @@ ObjectFactory::result_e ObjectFactory::stkPop() {
         }
 
         stkCurSize = REGSTK_SIZE / 2;
+
+        bypass = false;
     }
 
     stkCurTos = (REGSTK_SIZE + stkCurTos - 1) % REGSTK_SIZE;
@@ -370,6 +391,8 @@ ObjectFactory::result_e ObjectFactory::stkPop() {
 ObjectFactory::result_e ObjectFactory::stkFlush() {
     if (stkCurSize == 0)
         return lastResult = R_OK;
+
+    bypass = true;
 
     TRY(addInstr());
     getLastInstr().setOp(Opcode_e::add_rm64_imm32)
@@ -387,6 +410,51 @@ ObjectFactory::result_e ObjectFactory::stkFlush() {
     stkCurSize = 0;
     stkCurTos = 0;  // This allows to use flushing as a way to align computation stacks between two separate code segements
 
+    bypass = false;
+
+    return lastResult = R_OK;
+}
+
+ObjectFactory::result_e ObjectFactory::stkFlushExceptOne() {
+    assert(stkCurSize != 0);  // Should probably be the case
+
+    if (stkCurSize == 0) {
+        TRY(stkPull(1));
+    }
+
+    if (stkCurSize == 1)
+        return lastResult = R_OK;
+
+    bypass = true;
+
+    unsigned toFlush = stkCurSize - 1;
+
+    TRY(addInstr());
+    getLastInstr().setOp(Opcode_e::add_rm64_imm32)
+                  .setRmReg(REG_BP)
+                  .setImm(8 * toFlush);
+
+    for (unsigned i = 0; i < toFlush; ++i) {
+        TRY(addInstr());
+        getLastInstr().setOp(Opcode_e::mov_rm64_r64)
+                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
+                      .setR(stkTos(stkCurSize - i))
+                      .setDisp(8 * (i - toFlush));
+    }
+
+    stkCurSize = 1;
+
+    if (stkCurTos != 0) {
+        TRY(addInstr());
+        getLastInstr().setOp(Opcode_e::mov_rm64_r64)
+                      .setRmReg(REGSTK_REGS[0])
+                      .setR(stkTos());
+    }
+
+    stkCurTos = 0;
+
+    bypass = false;
+
     return lastResult = R_OK;
 }
 
@@ -396,20 +464,27 @@ ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
     if (stkCurSize >= req)
         return lastResult = R_OK;
 
-    req = (req + 3) / (REGSTK_SIZE / 2) * (REGSTK_SIZE / 2);  // So that we only do patches of 4
+    bypass = true;
+
+    // We can't afford this, as the volume of the memory part of the stack may be less than 4
+    // req = (req + 3) / (REGSTK_SIZE / 2) * (REGSTK_SIZE / 2);  // So that we only do patches of 4
 
     TRY(addInstr());
     getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
                   .setRmReg(REG_BP)
                   .setImm(8 * (req - stkCurSize));
 
-    for (; stkCurSize < req; ++stkCurSize) {
+    for (unsigned i = 0; i < req - stkCurSize; ++i) {
         TRY(addInstr());
         getLastInstr().setOp(Opcode_e::mov_r64_rm64)
                       .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                      .setR(stkTos(stkCurSize))
-                      .setDisp(-8 * stkCurSize);
+                      .setR(stkTos(stkCurSize + i))
+                      .setDisp(-8 * (req - stkCurSize - i));
     }
+
+    stkCurSize = req;
+
+    bypass = false;
 
     return lastResult = R_OK;
 }
@@ -426,6 +501,9 @@ unsigned ObjectFactory::placeLabel() {
 
 ObjectFactory::result_e ObjectFactory::placeLabel(unsigned reservedLabelIdx) {
     // TODO: Implement!
+    if (getLastInstr().getSymbolHere()->ctorLabel(reservedLabelIdx)) {
+        return lastResult = R_BADSYMBOL;
+    }
 
     return lastResult = R_OK;
 }
@@ -446,12 +524,322 @@ Instruction &ObjectFactory::getLastInstr() {
 
 void ObjectFactory::dump() const {
     for (unsigned i = 0; i < code.getSize(); ++i) {
+        if (code[i].isRemoved())
+            continue;
+
         PackedInstruction pi{};
 
         REQUIRE(!code[i].compile(pi));
 
         pi.hexDump();
+
+        pi.dtor();
     }
+}
+
+static bool generateReloc(const Symbol *symbol, Vector<IMAGE_RELOCATION> &relocs,
+                          unsigned virtAddr, Hashtable<unsigned> &symbolLookup,
+                          unsigned ripOffset) {
+
+    TRY_B(!symbol);
+
+    if (!symbol->isUsed())
+        return false;
+
+    TRY_B(ripOffset - 4 > 5);
+
+    TRY_B(relocs.append());
+    IMAGE_RELOCATION &curReloc = relocs[-1];
+
+    unsigned symbolIndex = 0;
+
+    switch (symbol->getType()) {
+    case Symbol::T_LABEL: {
+        char buf[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
+
+        TRY_B(symbol->composeLabelName(buf, IMAGE_SIZEOF_SHORT_NAME + 1));
+
+        TRY_B(symbolLookup.get(buf, &symbolIndex));
+
+    } break;
+
+    case Symbol::T_FUNCTION: {
+        TRY_B(symbolLookup.get(symbol->getFunctionName(), symbol->getFunctionNameLength(), &symbolIndex));
+
+    } break;
+
+    case Symbol::T_NONE:
+    NODEFAULT
+    }
+
+    curReloc.VirtualAddress = virtAddr;
+    curReloc.SymbolTableIndex = symbolIndex;
+    curReloc.Type = IMAGE_REL_AMD64_REL32 + ripOffset - 4;
+
+    return false;
+}
+
+ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
+    #define ERR_(CODE)  { lastResult = CODE; goto err; }
+
+    #define WRITE_(SRC, SIZE, CNT)                  \
+        if (fwrite(SRC, SIZE, CNT, ofile) != CNT)   \
+            ERR_(R_BADIO);
+
+    constexpr unsigned SECTIONS_COUNT = 2;  // .text and .stk
+    constexpr unsigned SECT_TEXT = 1;
+    constexpr unsigned SECT_STK = 2;
+
+    constexpr unsigned STK_MEMORY_SIZE = 0x4000;  // Includes the saved stack counter (8 bytes)
+
+
+    IMAGE_FILE_HEADER coffHeader{};
+    Vector<IMAGE_SECTION_HEADER> sectionTable{};
+    Vector<IMAGE_SYMBOL> symbolTable{};
+    Vector<char> strings{};  // Not exactly string table yet
+    Vector<IMAGE_RELOCATION> textRelocs{};
+    Vector<char> textRawData{};
+    Vector<unsigned> auxSymIdx{};
+
+    Hashtable<unsigned> symbolLookup{};
+
+    IMAGE_SECTION_HEADER *sectText = nullptr,
+                         *sectStk  = nullptr;
+
+    unsigned curPos = 0;
+
+    if (!ofile) ERR_(R_BADPTR);
+
+    if (sectionTable.ctor(SECTIONS_COUNT))      ERR_(R_BADMEMORY);
+    if (symbolTable.ctor())                     ERR_(R_BADMEMORY);
+    if (strings.ctor())                         ERR_(R_BADMEMORY);
+    if (textRelocs.ctor())                      ERR_(R_BADMEMORY);
+    if (textRawData.ctor())                     ERR_(R_BADMEMORY);
+    if (auxSymIdx.ctor(SECTIONS_COUNT))         ERR_(R_BADMEMORY);
+
+    if (symbolLookup.ctor())                    ERR_(R_BADMEMORY);
+
+    sectText = &sectionTable[SECT_TEXT - 1];
+    sectStk  = &sectionTable[SECT_STK  - 1];
+
+    coffHeader.Machine = IMAGE_FILE_MACHINE_AMD64;
+    coffHeader.NumberOfSections = SECTIONS_COUNT;
+    coffHeader.TimeDateStamp = (DWORD)time(nullptr);
+    // coffHeader.PointerToSymbolTable = ;
+    // coffHeader.NumberOfSymbols = ;
+    coffHeader.SizeOfOptionalHeader = 0;
+    coffHeader.Characteristics = 0;
+
+    // Warning: if the name is 8 characters long, use memcpy instead.
+    // If it's longer than 8 characters, the string table should be used
+    strcpy((char *)sectText->Name, ".text");
+    sectText->Misc.VirtualSize = 0;
+    sectText->VirtualAddress = 0;
+    // sectText->SizeOfRawData = ;
+    // sectText->PointerToRawData = ;
+    // sectText->PointerToRelocations = ;
+    sectText->PointerToLinenumbers = 0;
+    // sectText->NumberOfRelocations = ;
+    sectText->NumberOfLinenumbers = 0;
+    sectText->Characteristics =
+        IMAGE_SCN_CNT_CODE |
+        // ?IMAGE_SCN_LNK_NRELOC_OVFL |
+        IMAGE_SCN_MEM_EXECUTE |
+        IMAGE_SCN_MEM_READ;
+
+    strcpy((char *)sectStk->Name, ".stk");
+    sectStk->Misc.VirtualSize = 0;
+    sectStk->VirtualAddress = 0;
+    sectStk->SizeOfRawData = STK_MEMORY_SIZE;
+    sectStk->PointerToRawData = 0;
+    sectStk->PointerToRelocations = 0;
+    sectStk->PointerToLinenumbers = 0;
+    sectStk->NumberOfRelocations = 0;
+    sectStk->NumberOfLinenumbers = 0;
+    sectStk->Characteristics =
+        IMAGE_SCN_ALIGN_8BYTES |  // Just in case
+        IMAGE_SCN_CNT_UNINITIALIZED_DATA |
+        IMAGE_SCN_MEM_READ |
+        IMAGE_SCN_MEM_WRITE;
+
+    // TODO: Add symbol table entries for the sections themselves
+    for (unsigned i = 0; i < sectionTable.getSize(); ++i) {
+        const IMAGE_SECTION_HEADER &cur = sectionTable[i];
+
+        if (symbolTable.append() || symbolTable.append()) ERR_(R_BADMEMORY);
+
+        IMAGE_SYMBOL &symbolEntry = symbolTable[-2];
+        IMAGE_AUX_SYMBOL &auxEntry = reinterpret_cast<IMAGE_AUX_SYMBOL &>(symbolTable[-1]);
+
+        memcpy(symbolEntry.N.ShortName, cur.Name, IMAGE_SIZEOF_SHORT_NAME);
+        symbolEntry.Value = 0;
+        symbolEntry.SectionNumber = i + 1;
+        symbolEntry.Type = 0;
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_STATIC;
+        symbolEntry.NumberOfAuxSymbols = 1;
+
+        auxSymIdx[i] = symbolTable.getSize() - 1;
+
+        // auxEntry.Section.Length = ;
+        // auxEntry.Section.NumberOfRelocations = ;
+        // auxEntry.Section.NumberOfLinenumbers = ;
+        auxEntry.Section.CheckSum = 0;
+        auxEntry.Section.Number = i + 1;  // TODO: Maybe unnecessary
+        auxEntry.Section.Selection = 0;
+    }
+
+    curPos = 0;
+
+    for (const Instruction &cur : code) {
+        curPos += cur.getLength();
+
+        const Symbol *symbol = cur.getSymbolHere();
+        assert(symbol);
+        if (!symbol->isUsed())
+            continue;
+
+        assert(symbol->getType() == Symbol::T_LABEL);  // Functions should be defined differently
+
+        if (symbolTable.append()) ERR_(R_BADMEMORY);
+        IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
+
+        char buf[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
+        if (symbol->composeLabelName(buf, IMAGE_SIZEOF_SHORT_NAME + 1)) {
+            ERR("Too many labels, please encapsulate your code better");
+            ERR_(R_BADSYMBOL);
+        }
+
+        if (symbolLookup.has(buf, symbolTable.getSize() - 1)) {
+            ERR("Duplicate label");
+            ERR_(R_BADSYMBOL);
+        }
+
+        if (symbolLookup.set(buf, symbolTable.getSize() - 1))
+            ERR_(R_BADMEMORY);
+
+        memcpy(symbolEntry.N.ShortName, buf, IMAGE_SIZEOF_SHORT_NAME);
+        symbolEntry.Value = curPos;
+        symbolEntry.SectionNumber = SECT_TEXT;
+        symbolEntry.Type = 0;
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_LABEL;
+        symbolEntry.NumberOfAuxSymbols = 0;
+    }
+
+    {
+    if (symbolTable.append()) ERR_(R_BADMEMORY);
+    IMAGE_SYMBOL &symbolTest = symbolTable[-1];
+    strcpy((char *)symbolTest.N.ShortName, "test");
+    symbolTest.Value = 0;
+    symbolTest.SectionNumber = SECT_TEXT;
+    symbolTest.Type = IMAGE_SYM_DTYPE_FUNCTION << 4;
+    symbolTest.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
+    symbolTest.NumberOfAuxSymbols = 0;
+    }
+
+    sectText->SizeOfRawData = curPos;
+    curPos = 0;
+
+    for (const Instruction &cur : code) {
+        unsigned curLen = cur.getLength();
+
+        if (textRawData.extend(curLen))  ERR_(R_BADMEMORY);
+
+        PackedInstruction pi{};
+        if (cur.compile(pi)) ERR_(R_BADINSTR);
+
+        char *dest = &textRawData[-curLen];
+        if (pi.compile(&dest, curLen))  ERR_(R_BADMEMORY);
+
+        pi.dtor();
+
+        const Symbol *symbol = cur.getDispSymbol();
+        assert(symbol);
+
+        unsigned ripOffset = 0;
+        unsigned dispOffset = cur.getDispOffset(&ripOffset);
+
+        if (generateReloc(symbol, textRelocs, textRawData.getSize() - curLen +
+                          dispOffset, symbolLookup, ripOffset))
+            ERR_(R_BADSYMBOL);
+    }
+
+    /*
+
+    COFF Header
+    Section Table
+    Symbol Table
+    String Table (DWORD size, data. Size includes itself)
+    Relocations for .text
+    Raw data of .text
+
+    */
+
+    coffHeader.PointerToSymbolTable = sizeof(coffHeader) + sizeof(IMAGE_SECTION_HEADER) * sectionTable.getSize();
+    coffHeader.NumberOfSymbols = symbolTable.getSize();
+
+    sectText->PointerToRelocations = coffHeader.PointerToSymbolTable +
+        sizeof(IMAGE_SYMBOL) * symbolTable.getSize()+ sizeof(DWORD) + strings.getSize();
+
+    if (textRelocs.getSize() >= 0xffff) {
+        sectText->NumberOfRelocations = 0xffff;
+        sectText->Characteristics |= IMAGE_SCN_LNK_NRELOC_OVFL;
+    } else {
+        sectText->NumberOfRelocations = textRelocs.getSize();
+    }
+
+    sectText->PointerToRawData = sectText->PointerToRelocations + sizeof(textRelocs[0]) * textRelocs.getSize();
+    if (sectText->Characteristics & IMAGE_SCN_LNK_NRELOC_OVFL) {
+        sectText->PointerToRawData += sizeof(IMAGE_RELOCATION);
+    }
+
+    for (unsigned i = 0; i < sectionTable.getSize(); ++i) {
+        const IMAGE_SECTION_HEADER &cur = sectionTable[i];
+        IMAGE_AUX_SYMBOL &auxEntry = reinterpret_cast<IMAGE_AUX_SYMBOL &>(symbolTable[auxSymIdx[i]]);
+
+        auxEntry.Section.Length = cur.SizeOfRawData;
+        auxEntry.Section.NumberOfRelocations = cur.NumberOfRelocations;
+        auxEntry.Section.NumberOfLinenumbers = cur.NumberOfLinenumbers;
+    }
+
+
+    WRITE_(&coffHeader, sizeof(coffHeader), 1);
+    WRITE_(sectionTable.getBuf(), sizeof(IMAGE_SECTION_HEADER), sectionTable.getSize());
+    WRITE_(symbolTable .getBuf(), sizeof(IMAGE_SYMBOL),          symbolTable.getSize());
+
+    {
+    DWORD stringTableSize = strings.getSize() + 4;
+    WRITE_(&stringTableSize, sizeof(DWORD), 1);
+    }
+
+    WRITE_(strings.getBuf(),       sizeof(char),                     strings.getSize());
+
+    if (sectText->Characteristics & IMAGE_SCN_LNK_NRELOC_OVFL) {
+        IMAGE_RELOCATION relocCount{};
+
+        relocCount.VirtualAddress = textRelocs.getSize();
+
+        WRITE_(&relocCount, sizeof(IMAGE_RELOCATION), 1);
+    }
+
+    WRITE_(textRelocs  .getBuf(), sizeof(IMAGE_RELOCATION),       textRelocs.getSize());
+    WRITE_(textRawData .getBuf(), sizeof(char),                  textRawData.getSize());
+
+    return R_OK;
+
+err:
+    sectionTable.dtor();
+    symbolTable .dtor();
+    strings     .dtor();
+    textRelocs  .dtor();
+    textRawData .dtor();
+    auxSymIdx   .dtor();
+
+    symbolLookup.dtor();
+
+    return lastResult;
+
+    #undef WRITE_
+    #undef ERR_
 }
 
 }

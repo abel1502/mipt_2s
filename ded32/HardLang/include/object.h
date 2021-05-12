@@ -9,6 +9,8 @@
 #include "vector.h"
 #include "opcode.h"
 #include "opcode_enums.h"
+#include "symbol.h"
+#include "lexer.h"
 
 
 namespace abel {
@@ -250,6 +252,9 @@ public:
         R_BADMEMORY,
         R_BADPTR,
         R_BADSIZE,
+        R_BADIO,
+        R_BADSYMBOL,
+        R_BADINSTR,
         R_NOTIMPL,
         // TODO
     };
@@ -266,16 +271,21 @@ public:
 
     //--------------------------------------------------------------------------------
 
+    void stkReset();
+
     reg_e stkTos(unsigned depth = 1) const;
 
     ObjectFactory::result_e stkPush();
 
     ObjectFactory::result_e stkPop();
 
-    /// Move the stack's contents to the memory
+    /// Move the stack's contents to the memory, leaving at most `except` behind
     ObjectFactory::result_e stkFlush();
 
-    /// Move the stack's contents to the registers, ensuring at least req being pulled
+    /// Same as flush, but maintains the tos in the zeroth register as the return value
+    ObjectFactory::result_e stkFlushExceptOne();
+
+    /// Move the stack's contents to the registers, ensuring at least `req` being pulled
     ObjectFactory::result_e stkPull(unsigned req = 0);
 
     inline bool stkIsEmpty() const {
@@ -291,7 +301,17 @@ public:
 
     result_e placeLabel(unsigned reservedLabelIdx);
 
-    // TODO: Ways to reference a label in an instruction
+    /// Creates a function symbol at the next added instruction
+    result_e exportFunction(const Token *name, bool mangle = true);
+
+    /// Creates a function symbol at the next added instruction
+    result_e exportFunction(const char *name, unsigned length, bool mangle = false);
+
+    /// Requests a function from the outside, so that it can be referenced in the code
+    result_e importFunction(const Token *name, bool mangle = true);
+
+    /// Requests a function from the outside, so that it can be referenced in the code
+    result_e importFunction(const char *name, unsigned length, bool mangle = false);
 
     result_e addInstr();
 
@@ -312,6 +332,8 @@ private:
 
     unsigned stkCurTos;
     unsigned stkCurSize;
+
+    mutable bool bypass;
 
 };
 

@@ -19,7 +19,7 @@
 	<cerrno>
 	"general.h"
 
-1620317539 source:d:\workspace\.mipt\s2\ded32\hardlang\source\lexer.cpp
+1620821212 source:d:\workspace\.mipt\s2\ded32\hardlang\source\lexer.cpp
 	"lexer.h"
 	<cstdlib>
 	<cmath>
@@ -50,7 +50,7 @@
 	<algorithm>
 	<cctype>
 
-1619777624 d:\workspace\.mipt\s2\ded32\hardlang\\include\\hashtable.h
+1620742549 d:\workspace\.mipt\s2\ded32\hardlang\\include\\hashtable.h
 	"general.h"
 	"filebuf.h"
 	"checksum.h"
@@ -65,7 +65,7 @@
 
 1618512888 source:d:\workspace\.mipt\s2\ded32\hardlang\source\fnv1a.asm
 
-1620321098 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
+1620818546 source:d:\workspace\.mipt\s2\ded32\hardlang\source\main.cpp
 	<cstdio>
 	<cstdlib>
 	<cassert>
@@ -104,7 +104,7 @@
 	"stmttypes.dsl.h"
 	"stmttypes.dsl.h"
 
-1620313530 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
+1620805967 d:\workspace\.mipt\s2\ded32\hardlang\\include\\vector.h
 	"general.h"
 	<cstdlib>
 	<cstring>
@@ -121,7 +121,7 @@
 	<cassert>
 	<cstdio>
 
-1620320546 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+1620829208 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
 	"ast.h"
 	"exprtypes.dsl.h"
 	"pseudofuncs.dsl.h"
@@ -133,10 +133,14 @@
 
 1620320499 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
 
-1620292736 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+1620824960 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
 	"object.h"
+	"hashtable.h"
+	<windows.h>
+	<ctime>
+	<cstdlib>
 
-1620291991 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+1620820921 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
 	<cstdint>
 	<cstdio>
 	<immintrin.h>
@@ -144,16 +148,21 @@
 	"vector.h"
 	"opcode.h"
 	"opcode_enums.h"
+	"symbol.h"
+	"lexer.h"
 
-1620291971 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
+1620762084 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode.h
 	"general.h"
 	"object.h"
 	"opcode_enums.h"
+	"symbol.h"
 
-1620300225 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
+1620762070 source:d:\workspace\.mipt\s2\ded32\hardlang\source\opcode.cpp
 	"opcode.h"
 	<initializer_list>
 	<cassert>
+	"opcodes.dslctx.h"
+	"opcodes.dsl.h"
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
 	"opcodes.dslctx.h"
@@ -163,7 +172,18 @@
 
 1619728656 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dslctx.h
 
-1620050750 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode_enums.h
+1620456232 d:\workspace\.mipt\s2\ded32\hardlang\\include\\opcode_enums.h
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
+
+1620821594 d:\workspace\.mipt\s2\ded32\hardlang\\include\\symbol.h
+	<cassert>
+	"general.h"
+	"lexer.h"
+
+1620824894 source:d:\workspace\.mipt\s2\ded32\hardlang\source\symbol.cpp
+	"symbol.h"
+	<cstring>
+	<cstdlib>
+	<cstdio>
 
