@@ -64,6 +64,7 @@
 		<Unit filename="include/opcode.h" />
 		<Unit filename="include/opcode_enums.h" />
 		<Unit filename="include/parser.h" />
+		<Unit filename="include/symbol.h" />
 		<Unit filename="include/vector.h" />
 		<Unit filename="include/vtable.h" />
 		<Unit filename="source/ast.cpp" />
@@ -77,6 +78,7 @@
 		<Unit filename="source/object.cpp" />
 		<Unit filename="source/opcode.cpp" />
 		<Unit filename="source/parser.cpp" />
+		<Unit filename="source/symbol.cpp" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>
