@@ -1769,30 +1769,30 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_INT4:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movq_rx_rm64)
+                .setOp(Opcode_e::cvtsi2sd_rx_rm32)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::cvtsd2si_r32_rm64x)
-                .setR(obj.stkTos(1))
-                .setRmReg(REG_A);
+                .setOp(Opcode_e::movq_rm64_rx)
+                .setRmReg(obj.stkTos(1))
+                .setR(REG_A);
 
             break;
 
         case TypeSpec::T_INT8:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movq_rx_rm64)
+                .setOp(Opcode_e::cvtsi2sd_rx_rm64)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::cvtsd2si_r64_rm64x)
-                .setR(obj.stkTos(1))
-                .setRmReg(REG_A);
+                .setOp(Opcode_e::movq_rm64_rx)
+                .setRmReg(obj.stkTos(1))
+                .setR(REG_A);
 
             break;
 
@@ -1816,20 +1816,25 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_DBL:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::cvtsi2sd_rx_rm64)
+                .setOp(Opcode_e::movq_rx_rm64)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movq_rm64_rx)
-                .setRmReg(obj.stkTos(1))
-                .setR(REG_A);
+                .setOp(Opcode_e::cvtsd2si_r64_rm64x)
+                .setR(obj.stkTos(1))
+                .setRmReg(REG_A);
 
             break;
 
         case TypeSpec::T_INT4:
-            // Kind of works automatically
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movsx_r64_rm32)
+                .setR(obj.stkTos(1))
+                .setRmReg(obj.stkTos(1));
+
             break;
 
         case TypeSpec::T_INT8:
@@ -1855,15 +1860,15 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
         case TypeSpec::T_DBL:
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::cvtsi2sd_rx_rm32)
+                .setOp(Opcode_e::movq_rx_rm64)
                 .setR(REG_A)
                 .setRmReg(obj.stkTos(1));
 
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movq_rm64_rx)
-                .setRmReg(obj.stkTos(1))
-                .setR(REG_A);
+                .setOp(Opcode_e::cvtsd2si_r32_rm64x)
+                .setR(obj.stkTos(1))
+                .setRmReg(REG_A);
 
             break;
 
@@ -1871,11 +1876,13 @@ bool Expression::VMIN(Cast, compile)(ObjectFactory &obj, Scope *scope, const Pro
             break;
 
         case TypeSpec::T_INT8:
+            // TODO: Maybe unnecessary?
+
             TRY_B(obj.addInstr());
             obj.getLastInstr()
-                .setOp(Opcode_e::movsx_r64_rm32)
-                .setR(obj.stkTos(1))
-                .setRmReg(obj.stkTos(1));
+                .setOp(Opcode_e::mov_rm32_r32)
+                .setRmReg(obj.stkTos(1))
+                .setR(obj.stkTos(1));
 
             break;
 
@@ -2017,16 +2024,31 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
 
     const Vector<Var> *args = func->getArgs();
 
+    // TODO: Maybe adjust word suffixes according to the actual numbers
+    if (children.getSize() < args->getSize()) {
+        ERR("Function \"%.*s\" takes %u arguments, but only %u were given",
+            name->getLength(), name->getStr(), args->getSize(), children.getSize());
+
+        return true;
+    }
+
+    if (children.getSize() > args->getSize()) {
+        ERR("Warning: function \"%.*s\" passed %u arguments, but takes only %u",
+            name->getLength(), name->getStr(), children.getSize(), args->getSize());
+    }
+
     for (unsigned i = 0; i < args->getSize(); ++i) {
         TypeSpec::Mask childMask = children[i].deduceType((*args)[i].getType().getMask(), scope, prog);
 
         if (!childMask) {
-            ERR("Bad argument type");
+            ERR("Bad argument type (line %u, col %u: function \"%.*s\", argument %u)",
+                name->getLine() + 1, name->getCol() + 1, name->getLength(), name->getStr(), i + 1);
             return true;
         }
 
         if (!TypeSpec::isMaskUnambiguous(childMask)) {  // TODO: Review usages of this function and maybe remove unnecessary zero checks
-            ERR("Ambiguous argument type");
+            ERR("Ambiguous argument type (line %u, col %u: function \"%.*s\", argument %u)",
+                name->getLine() + 1, name->getCol() + 1, name->getLength(), name->getStr(), i + 1);
             return true;
         }
 
@@ -2056,16 +2078,23 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
 
     TRY_B(obj.stkFlush());
 
+    assert(obj.stkIsEmpty());
+
     //fprintf(ofile, "call dwl:$__func_%.*s\n", name->getLength(), name->getStr());
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::call_rel32)
-        .setDisp(0);  // TODO: SYMBOL!!!
+        .setDisp(0);  // SYMBOL (name)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name));
 
     // TODO: Figure out the computation stack behaviour!
-    // I guess we do nothing here, and the stack is kept flushed.
-    // Then whoever needs it will pull everything themselves
+    // We probably do a fake push (on an empty stack), which
+    // corresponds to the stkFlushExceptOne at the end of
+    // the function itself
+
+    assert(obj.stkIsEmpty());  // The object should believe this until now
+    TRY_B(obj.stkPush());
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
@@ -2442,20 +2471,25 @@ bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec
 
             return true;
         }  // TODO: Maybe also compile void expression, but make it trivial?
+
+        // TRY_B(obj.stkFlush());
     } else {
         expr.deduceType(rtype.getMask(), scope, prog);
 
         TRY_B(expr.compile(obj, scope, prog));
 
-        // TODO: Figure out the computation stack behaviour!
-        TRY_B(obj.stkFlush());  // I guess we just keep it flushed
+        TRY_B(obj.stkFlushExceptOne());
     }
 
-    assert(obj.stkIsEmpty());
+    //assert(obj.stkIsEmpty());
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::ret);
+
+    if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
+        TRY_B(obj.stkPop());
+    }
 
     return false;
 }
@@ -2483,7 +2517,8 @@ bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::jz_rel32)
-        .setDisp(0);  // TODO: SYMBOL!!! (endLbl)
+        .setDisp(0);  // SYMBOL!!! (endLbl)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(endLbl));
 
     code.getScope()->setParent(scope);  // TODO: Maybe get rid of all of those and fix this in the parser
     TRY_B(code.compile(obj, rtype, prog));
@@ -2491,7 +2526,8 @@ bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::jmp_rel32)
-        .setDisp(0);  // TODO: SYMBOL!!! (loopLbl)
+        .setDisp(0);  // SYMBOL!!! (loopLbl)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(loopLbl));
 
     TRY_B(obj.placeLabel(endLbl));
 
@@ -2521,7 +2557,8 @@ bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::jz_rel32)
-        .setDisp(0);  // TODO: SYMBOL!!! (elseLbl)
+        .setDisp(0);  // SYMBOL!!! (elseLbl)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(elseLbl));
 
     code.getScope()->setParent(scope);
     TRY_B(code.compile(obj, rtype, prog));
@@ -2529,7 +2566,8 @@ bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.addInstr());
     obj.getLastInstr()
         .setOp(Opcode_e::jmp_rel32)
-        .setDisp(0);  // TODO: SYMBOL!!! (endLbl)
+        .setDisp(0);  // SYMBOL!!! (endLbl)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(endLbl));
 
     TRY_B(obj.placeLabel(elseLbl));
 
@@ -2550,14 +2588,15 @@ bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpe
 
     if (mask != TypeSpec::VoidMask) {
         TRY_B(obj.stkPull(1));
-        TRY_B(obj.stkPop());  // TODO: Check
 
         TRY_B(obj.addInstr());
         obj.getLastInstr()
-            .setOp(Opcode_e::mov_rm32_r32)
-            .setR(obj.stkTos(0));
+            .setOp(Opcode_e::mov_rm64_r64)
+            .setR(obj.stkTos(1));
 
         TRY_B(var.reference(obj.getLastInstr(), scope));
+
+        TRY_B(obj.stkPop());  // TODO: Check  (still seems to be wrong)
     }
 
     return false;
@@ -2736,14 +2775,14 @@ bool Function::compile(ObjectFactory &obj, const Program *prog) {
 
     // This time I don't need to pop arguments away, and I can instead address them directly from the stack
 
+    obj.stkReset();
+
     code.getScope()->setParent(nullptr);
     TRY_B(code.compile(obj, rtype, prog));
 
-    TRY_B(obj.stkFlush());
-
     TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::ret);  // Force end of function
+        .setOp(Opcode_e::int3);  // Should hopefully break the program
 
     return false;
 }
