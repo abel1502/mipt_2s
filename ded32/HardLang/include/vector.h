@@ -32,10 +32,12 @@ public:
         return false;
     }
 
-    bool ctor(unsigned new_capacity) {
+    bool ctor(unsigned new_size) {
         TRY_B(ctor());
 
-        TRY_B(resize(new_capacity));
+        for (unsigned i = 0; i < new_size; ++i) {
+            TRY_B(append());
+        }
 
         return false;
     }
@@ -87,7 +89,7 @@ public:
         }
 
         if constexpr (HAS_FACTORIES(T)) {
-            buf[size].ctor();
+            TRY_B(buf[size].ctor());
         }
 
         size++;
@@ -103,6 +105,22 @@ public:
         }
 
         buf[size++] = value;
+
+        return false;
+    }
+
+    bool extend(unsigned count) {
+        while (size + count > capacity) {
+            TRY_B(resize(capacity * 2));
+        }
+
+        if constexpr (HAS_FACTORIES(T)) {
+            for (unsigned i = size; i < size + count; ++i) {
+                TRY_B(buf[i].ctor());
+            }
+        }
+
+        size += count;
 
         return false;
     }
@@ -125,6 +143,10 @@ public:
 
     unsigned getCapacity() const {
         return capacity;
+    }
+
+    const T *getBuf() const {
+        return buf;
     }
 
     const_iterator begin() const {
