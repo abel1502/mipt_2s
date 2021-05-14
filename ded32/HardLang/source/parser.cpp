@@ -123,10 +123,37 @@ Parser::Error_e Parser::parse_FUNC_DEF(Program *prog) {
     TypeSpec ts{};
     const Token *name = nullptr;
     Code *code = nullptr;
+    Function::type_e funcType = Function::T_DEF;
 
     P_TRYSYS(prog->makeFunction(&func));
 
-    P_REQ_KWD(DEF);
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wswitch-enum"
+
+    switch (cur()->getKwd()) {
+    case Token::KWD_DEF:
+        funcType = Function::T_DEF;
+        break;
+
+    case Token::KWD_STATIC:
+        funcType = Function::T_STATIC;
+        break;
+
+    case Token::KWD_EXPORT:
+        funcType = Function::T_C_EXPORT;
+        break;
+
+    case Token::KWD_IMPORT:
+        funcType = Function::T_C_IMPORT;
+        break;
+
+    default:
+        goto error;
+    }
+
+    #pragma GCC diagnostic pop
+
+    next();
 
     P_TRY(parse_TYPESPEC(&ts),
           P_REQ_PUNCT(COLON),
@@ -135,14 +162,15 @@ Parser::Error_e Parser::parse_FUNC_DEF(Program *prog) {
     P_REQ_NONTERM(FUNC, &name);
     P_REQ_PUNCT(LPAR);
 
-    func->ctor(ts, name);
+    P_TRYSYS(func->ctor(ts, name));
+    func->setType(funcType);
 
     P_REQ_NONTERM(FUNC_ARGS_DEF, func);
     P_REQ_PUNCT(RPAR);
 
     P_TRYSYS(func->makeCode(&code));
 
-    P_REQ_NONTERM(COMPOUND_STMT, code, nullptr);
+    P_TRY(parse_COMPOUND_STMT(code, nullptr), func->setHasCode(true), func->setHasCode(false));
 
     P_TRYSYS(func->registerArgs());
 
