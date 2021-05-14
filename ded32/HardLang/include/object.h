@@ -238,8 +238,74 @@ struct PackedInstruction {
 };
 
 
+class FuncInfo {
+public:
+    FACTORIES(FuncInfo)
+
+    bool ctor();
+
+    void dtor();
+
+    inline bool isUsed() const {
+        return symbol.isUsed();
+    }
+
+    bool setFunction(const char *name, unsigned length);
+
+    bool setExpFunction(const char *name, unsigned length, unsigned new_addr);
+
+    bool setImpFunction(const char *name, unsigned length);
+
+    inline void setExport(unsigned new_addr) {
+        addr = new_addr;
+        isImport = false;
+    }
+
+    inline void setImport() {
+        addr = 0;
+        isImport = true;
+    }
+
+    inline void setStatic(bool new_isStatic) {
+        isStatic = new_isStatic;
+    }
+
+    inline bool checkImport() const {
+        return isImport;
+    }
+
+    inline bool checkStatic() const {
+        return isStatic;
+    }
+
+    inline unsigned getAddr() const {
+        return isImport ? -1u : addr;
+    }
+
+    inline Symbol *getSymbol() {
+        return &symbol;
+    }
+
+    inline const Symbol *getSymbol() const {
+        return &symbol;
+    }
+
+private:
+    Symbol symbol;
+    bool isImport;
+    bool isStatic;
+    unsigned addr;
+};
+
+
 class ObjectFactory {
 public:
+
+    struct LabelAlias {
+        unsigned newIdx;
+        unsigned existentIdx;
+    };
+
     static constexpr unsigned REGSTK_SIZE = 8;
     static constexpr reg_e REGSTK_REGS[REGSTK_SIZE]  = {
         REG_10, REG_11, REG_12, REG_13, REG_14, REG_15, REG_SI, REG_DI,
@@ -302,10 +368,10 @@ public:
     result_e placeLabel(unsigned reservedLabelIdx);
 
     /// Creates a function symbol at the next added instruction
-    result_e exportFunction(const Token *name, bool mangle = true);
+    result_e defineFunction(const Token *name, bool mangle = true, bool isExport = true);
 
     /// Creates a function symbol at the next added instruction
-    result_e exportFunction(const char *name, unsigned length, bool mangle = false);
+    result_e defineFunction(const char *name, unsigned length, bool mangle = false, bool isExport = true);
 
     /// Requests a function from the outside, so that it can be referenced in the code
     result_e importFunction(const Token *name, bool mangle = true);
@@ -327,8 +393,11 @@ private:
     mutable result_e lastResult;
 
     Vector<Instruction> code;
+    Vector<FuncInfo> funcs;
+    Vector<LabelAlias> labelAliases;
 
     unsigned nextLabelIdx;
+    Symbol scheduledLabel;
 
     unsigned stkCurTos;
     unsigned stkCurSize;
