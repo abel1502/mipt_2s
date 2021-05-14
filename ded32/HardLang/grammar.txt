@@ -21,7 +21,7 @@ MAIN 			::= FUNC_DEFS ENDMARKER
 FUNC_DEFS		::= FUNC_DEF*
 
 // TODO: Apply changes to the parser
-FUNC_DEF 		::= 'def' {TYPESPEC ':'}? FUNC '(' FUNC_ARGS_DEF ')' [COMPOUND_STMT ';']
+FUNC_DEF 		::= ['def' 'static' 'export' 'import'] {TYPESPEC ':'}? FUNC '(' FUNC_ARGS_DEF ')' [COMPOUND_STMT ';']
 
 // TODO: Maybe remove the comma
 FUNC_ARGS_DEF	::= LIST<FUNC_ARG_DEF, ','>?
