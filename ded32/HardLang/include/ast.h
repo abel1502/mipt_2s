@@ -414,6 +414,13 @@ private:
 class Function {
 public:
 
+    enum type_e {
+        T_DEF,
+        T_STATIC,
+        T_C_EXPORT,
+        T_C_IMPORT,
+    };
+
     FACTORIES(Function)
 
     bool ctor();
@@ -426,8 +433,6 @@ public:
     bool makeArg(Var **arg);
 
     void popArg();
-
-    void setExtern(bool new_isExtern);
 
     /// This one will always return &code
     bool makeCode(Code **code);
@@ -447,13 +452,36 @@ public:
 
     void reconstruct(FILE *ofile) const;
 
+    inline type_e getType() const {
+        return type;
+    }
+
+    inline void setType(type_e new_type) {
+        type = new_type;
+    }
+
+    inline bool getHasCode() const {
+        return hasCode;
+    }
+
+    inline void setHasCode(bool new_hasCode) {
+        hasCode = new_hasCode;
+    }
+
 private:
 
     Vector<Var> args;
-    bool isExtern;
+    type_e type;
+    bool hasCode;
     Code code;
     TypeSpec rtype;
     const Token *name;
+
+    bool compileBody(ObjectFactory &obj, const Program *prog);
+
+    bool compileCCaller(ObjectFactory &obj, const Program *prog);
+
+    bool compileCCallee(ObjectFactory &obj, const Program *prog);
 
 };
 

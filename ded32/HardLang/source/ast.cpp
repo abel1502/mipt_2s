@@ -2007,8 +2007,6 @@ bool Expression::VMIN(VarRef, compile)(ObjectFactory &obj, Scope *scope, const P
 }
 
 bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const Program *prog) {
-    // TODO: Special handling for export and import!!!
-
     TypeSpec exprType{};
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
 
@@ -2714,7 +2712,8 @@ void Statement::VMIN(Empty, reconstruct)(FILE *ofile, unsigned) const {
 bool Function::ctor() {
     TRY_B(args.ctor());
     TRY_B(code.ctor());
-    isExtern = false;
+    type = T_DEF;
+    hasCode = false;
     rtype = {};
     name = nullptr;
 
@@ -2724,7 +2723,6 @@ bool Function::ctor() {
 bool Function::ctor(TypeSpec new_rtype, const Token* new_name) {
     TRY_B(ctor());
 
-    isExtern = false;
     rtype = new_rtype;
     name = new_name;
 
@@ -2750,10 +2748,6 @@ void Function::popArg() {
     args.pop();
 }
 
-void Function::setExtern(bool new_isExtern) {
-    isExtern = new_isExtern;
-}
-
 bool Function::makeCode(Code** out_code) {
     *out_code = &code;
 
@@ -2768,13 +2762,7 @@ bool Function::registerArgs() {
     return false;
 }
 
-bool Function::compile(ObjectFactory &obj, const Program *prog) {
-    // TODO: Special handling for export and import!!!
-
-    // TODO: Create a symbol for this!
-
-    // This time I don't need to pop arguments away, and I can instead address them directly from the stack
-
+bool Function::compileBody(ObjectFactory &obj, const Program *prog) {
     obj.stkReset();
 
     code.getScope()->setParent(nullptr);
@@ -2782,7 +2770,305 @@ bool Function::compile(ObjectFactory &obj, const Program *prog) {
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::int3);  // Should hopefully break the program
+        .setOp(Opcode_e::ret);  // Equivalent to either returning void or a garbage value,
+                                // DOESN'T break the stack or anything
+
+    return false;
+}
+
+constexpr unsigned CARGS_REGS_SIZE = 4;
+constexpr reg_e CARGS_REGS[CARGS_REGS_SIZE] = {REG_C, REG_D, REG_8, REG_9};
+constexpr reg_e CARGS_REGS_XMM[CARGS_REGS_SIZE] = {(reg_e)0, (reg_e)1, (reg_e)2, (reg_e)3};
+
+bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
+    /*
+
+    regstk   <- stack (return address)
+    regstk   <- savedStk
+    flush
+    savedStk <- curStk
+
+    changeArgs (to registers)
+    pad_stk
+    call
+    unpad_stk
+
+    curStk   <- savedStk
+    pull 2
+    regstk   -> savedStk
+    regstk   -> stack (return address)
+
+    regstk   <- rax
+
+    ret
+
+    */
+
+    obj.stkReset();
+
+    TRY_B(obj.stkPush());
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::pop_rm64)
+        .setRmReg(obj.stkTos());
+
+    TRY_B(obj.stkPush());
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_r64_rm64)
+        .setR(obj.stkTos())
+        .setRmMemRip()
+        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+
+    TRY_B(obj.stkFlush());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_rm64_r64)
+        .setRmMemRip()
+        .setDisp(0)  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setR(REG_BP);
+
+    for (unsigned i = 0; i < CARGS_REGS_SIZE && i < args.getSize(); ++i) {
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::pop_rm64)
+            .setRmReg(CARGS_REGS[i]);
+
+        if (args[i].getType().type == TypeSpec::T_DBL) {
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::movq_rx_rm64)
+                .setR(CARGS_REGS_XMM[i])
+                .setRmReg(CARGS_REGS[i]);
+        }
+    }
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::sub_rm64_imm8)
+        .setRmReg(REG_SP)
+        .setImm(32);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::call_rel32)
+        .setDisp(0);  // SYMBOL (name)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::add_rm64_imm8)
+        .setRmReg(REG_SP)
+        .setImm(32);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_r64_rm64)
+        .setR(REG_BP)
+        .setRmMemRip()
+        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+
+    TRY_B(obj.stkPull(2));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_r64_rm64)
+        .setR(REG_BP)
+        .setRmReg(obj.stkTos());
+    TRY_B(obj.stkPop());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::push_rm64)
+        .setRmReg(obj.stkTos());
+    TRY_B(obj.stkPop());
+
+    if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
+        TRY_B(obj.stkPush());
+
+        TRY_B(obj.addInstr());
+        if (rtype.type == TypeSpec::T_DBL) {
+            obj.getLastInstr().setOp(Opcode_e::movq_rm64_rx);
+        } else {
+            obj.getLastInstr().setOp(Opcode_e::mov_rm64_r64);
+        }
+
+        obj.getLastInstr()
+            .setRmReg(obj.stkTos())
+            .setR(REG_A);
+    }
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::ret);
+
+    return false;
+}
+
+bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
+    /*
+
+    regstk   <- stack (return address)
+    regstk   <- rbp
+
+    curStk   <- savedStk
+    flush
+
+    changeArgs (from regs to padded space)
+    call
+
+    savedStk <- curStk
+    pull 2
+    regstk   -> rbp
+    regstk   -> stack (return address)
+
+    regstk   -> rax
+
+    ret
+
+    */
+
+    obj.stkReset();
+
+    TRY_B(obj.stkPush());
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::pop_rm64)
+        .setRmReg(obj.stkTos());
+
+    TRY_B(obj.stkPush());
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_rm64_r64)
+        .setRmReg(obj.stkTos())
+        .setR(REG_BP);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_r64_rm64)
+        .setR(REG_BP)
+        .setRmMemRip()
+        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+
+    TRY_B(obj.stkFlush());
+
+    for (unsigned i = 0; i < CARGS_REGS_SIZE && i < args.getSize(); ++i) {
+        TRY_B(obj.addInstr());
+
+        if (args[i].getType().type == TypeSpec::T_DBL) {
+            obj.getLastInstr()
+                .setOp(Opcode_e::movq_rm64_rx)
+                .setR(CARGS_REGS_XMM[i]);
+        } else {
+            obj.getLastInstr()
+                .setOp(Opcode_e::mov_rm64_r64)
+                .setR(CARGS_REGS[i]);
+        }
+
+        obj.getLastInstr()
+            .setRmSib(REG_SP, Instruction::mode_t::DISP_8)
+            .setDisp(8 * i);
+    }
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::call_rel32)
+        .setDisp(0);  // SYMBOL (name)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_rm64_r64)
+        .setRmMemRip()
+        .setDisp(0)  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setR(REG_BP);
+
+    TRY_B(obj.stkPull(2));
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_r64_rm64)
+        .setR(REG_BP)
+        .setRmReg(obj.stkTos());
+    TRY_B(obj.stkPop());
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::push_rm64)
+        .setRmReg(obj.stkTos());
+    TRY_B(obj.stkPop());
+
+    if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
+        TRY_B(obj.stkPush());
+
+        TRY_B(obj.addInstr());
+        if (rtype.type == TypeSpec::T_DBL) {
+            obj.getLastInstr().setOp(Opcode_e::movq_rx_rm64);
+        } else {
+            obj.getLastInstr().setOp(Opcode_e::mov_r64_rm64);
+        }
+
+        obj.getLastInstr()
+            .setR(REG_A)
+            .setRmReg(obj.stkTos());
+    }
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::ret);
+
+    return false;
+}
+
+bool Function::compile(ObjectFactory &obj, const Program *prog) {
+    assert(prog);
+
+    switch (type) {
+    case T_DEF: {
+        if (hasCode) {
+            TRY_B(obj.defineFunction(name, true, true));  // Mangled, exported
+
+            TRY_B(compileBody(obj, prog));
+        } else {
+            TRY_B(obj.importFunction(name, true));  // Mangled, imported
+        }
+    } break;
+
+    case T_STATIC: {
+        TRY_BC(!hasCode, ERR("Static functions must have code."));
+
+        TRY_B(obj.defineFunction(name, true, false));  // Mangled, not exported
+
+        TRY_B(compileBody(obj, prog));
+    } break;
+
+    case T_C_EXPORT: {
+        TRY_B(obj.defineFunction(name, false, true));  // Unmangled C-variant is exported
+
+        TRY_B(compileCCallee(obj, prog));
+
+        if (hasCode) {
+            TRY_B(obj.defineFunction(name, true, true));  // Mangled non-C variant, also exported
+
+            TRY_B(compileBody(obj, prog));
+        } else {
+            TRY_B(obj.importFunction(name, true));  // Mangled, imported
+        }
+    } break;
+
+    case T_C_IMPORT: {
+        TRY_BC(hasCode, ERR("Import functions mustn't have code."));
+
+        TRY_B(obj.importFunction(name, false));  // Unmangled C-variant, impoted
+
+        TRY_B(obj.defineFunction(name, false, true));  // Mangled wrapped, exported
+
+        TRY_B(compileCCaller(obj, prog));
+    } break;
+
+    NODEFAULT
+    }
 
     return false;
 }
@@ -2790,7 +3076,7 @@ bool Function::compile(ObjectFactory &obj, const Program *prog) {
 bool Function::isMain() const {
     const char MAIN_NAME[] = "main";
 
-    return !isExtern &&
+    return type == T_DEF && hasCode &&
            name->getLength() == sizeof(MAIN_NAME) &&
            rtype.type == TypeSpec::T_VOID &&
            strncmp(name->getStr(), MAIN_NAME, sizeof(MAIN_NAME)) == 0;
