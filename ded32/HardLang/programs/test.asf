@@ -25,13 +25,15 @@ def main() {
 	
 	var dbl:tmp2;
 	tmp2 = dbl:tmp + dbl:123 - 123.;
+	
+	var int4:tmp3 = test(1., 2., 3, 4, 5., 6., 7, 8, 0);
     
     ret;
 }
 
-
-def int4:test(dbl:a1, dbl:a2, int4:a3, int8:a4, dbl:a5, dbl:a6, int4:a7, int8:a8) {
+static int4:test(dbl:a1, dbl:a2, int4:a3, int8:a4, dbl:a5, dbl:a6, int4:a7, int8:a8, int4:a9) {
 	var dbl:tmp = 0.;
 	tmp += a1 + a5 + a2 + a6;
 	ret (a4 >= a8) * (a3 + a7) + int4:tmp;
 }
+
