@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <cassert>
 
 
 namespace abel {
@@ -27,6 +28,7 @@ bool Symbol::ctorLabel(unsigned new_idx) {
 
 bool Symbol::ctorFunction(const Token *new_name) {
     assert(new_name);
+    assert(new_name->isName());
 
     assert(type == T_NONE);
 
@@ -35,8 +37,8 @@ bool Symbol::ctorFunction(const Token *new_name) {
 
     type = T_FUNCTION;
 
-    length = strnlen(new_name->getStr(), new_name->getLength());
-    name = (char *)calloc(length + PREFIX_LEN + 1, sizeof(char));
+    length = strnlen(new_name->getStr(), new_name->getLength()) + PREFIX_LEN;
+    name = (char *)calloc(length + 1, sizeof(char));
 
     if (!name)
         return true;
@@ -67,6 +69,14 @@ bool Symbol::ctorFunction(const char *new_name, unsigned new_length) {
     return false;
 }
 
+bool Symbol::ctorSavedStk() {
+    assert(type == T_NONE);
+
+    type = T_SAVEDSTK;
+
+    return false;
+}
+
 void Symbol::dtor() {
     if (type == T_FUNCTION) {
         free(name);
@@ -74,6 +84,14 @@ void Symbol::dtor() {
     }
 
     type = T_NONE;
+}
+
+void Symbol::swap(Symbol &a, Symbol &b) {
+    std::swap(a.type, b.type);
+
+    // Another hack - we rely on this set of union fields covering everything
+    std::swap(a.length, b.length);
+    std::swap(a.name, b.name);
 }
 
 bool Symbol::composeLabelName(char *buf, unsigned limit) const {

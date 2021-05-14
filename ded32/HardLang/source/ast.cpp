@@ -2818,7 +2818,8 @@ bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
         .setOp(Opcode_e::mov_r64_rm64)
         .setR(obj.stkTos())
         .setRmMemRip()
-        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setDisp(0);
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
 
     TRY_B(obj.stkFlush());
 
@@ -2826,8 +2827,9 @@ bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
     obj.getLastInstr()
         .setOp(Opcode_e::mov_rm64_r64)
         .setRmMemRip()
-        .setDisp(0)  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setDisp(0)
         .setR(REG_BP);
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
 
     for (unsigned i = 0; i < CARGS_REGS_SIZE && i < args.getSize(); ++i) {
         TRY_B(obj.addInstr());
@@ -2867,7 +2869,8 @@ bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
         .setOp(Opcode_e::mov_r64_rm64)
         .setR(REG_BP)
         .setRmMemRip()
-        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setDisp(0);
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
 
     TRY_B(obj.stkPull(2));
 
@@ -2949,7 +2952,8 @@ bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
         .setOp(Opcode_e::mov_r64_rm64)
         .setR(REG_BP)
         .setRmMemRip()
-        .setDisp(0);  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setDisp(0);
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
 
     TRY_B(obj.stkFlush());
 
@@ -2981,8 +2985,9 @@ bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
     obj.getLastInstr()
         .setOp(Opcode_e::mov_rm64_r64)
         .setRmMemRip()
-        .setDisp(0)  // TODO: Symbol! (a dedicated location in the .stk section)
+        .setDisp(0)
         .setR(REG_BP);
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
 
     TRY_B(obj.stkPull(2));
 
