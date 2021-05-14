@@ -149,6 +149,16 @@ OPDEF(jecxz_rel8,     {0xE3},     -1,     -1, SIZE_B,     -1, -1, {0x67})
 OPDEF(jrcxz_rel8,     {0xE3},     -1,     -1, SIZE_B,     -1, -1, {})
 
 
+OPDEF(add_rm16_imm8,  {0x83}, SIZE_W,     -1,     -1, SIZE_B,  0, {0x66})
+OPDEF(add_rm32_imm8,  {0x83}, SIZE_D,     -1,     -1, SIZE_B,  0, {})
+OPDEF(add_rm64_imm8,  {0x83}, SIZE_Q,     -1,     -1, SIZE_B,  0, {})
+
+
+OPDEF(sub_rm16_imm8,  {0x83}, SIZE_W,     -1,     -1, SIZE_B,  5, {0x66})
+OPDEF(sub_rm32_imm8,  {0x83}, SIZE_D,     -1,     -1, SIZE_B,  5, {})
+OPDEF(sub_rm64_imm8,  {0x83}, SIZE_Q,     -1,     -1, SIZE_B,  5, {})
+
+
 OPDEF(imul_r16_rm16,  B_(0x0F, 0xAF), SIZE_W, SIZE_W,     -1,     -1, -1, {0x66})
 OPDEF(imul_r32_rm32,  B_(0x0F, 0xAF), SIZE_D, SIZE_D,     -1,     -1, -1, {})
 OPDEF(imul_r64_rm64,  B_(0x0F, 0xAF), SIZE_Q, SIZE_Q,     -1,     -1, -1, {})

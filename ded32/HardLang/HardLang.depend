@@ -41,7 +41,7 @@
 	"tokens.dsl.h"
 	"tokens.dsl.h"
 
-1619959046 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\tokens.dsl.h
+1620843800 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\tokens.dsl.h
 
 1618952484 source:d:\workspace\.mipt\s2\ded32\hardlang\source\hashtable.cpp
 	"hashtable.h"
@@ -83,7 +83,7 @@
 	"ast.h"
 	"vector.h"
 
-1620299118 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
+1620846158 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
 	"general.h"
 	"parser.h"
 	"vector.h"
@@ -116,12 +116,12 @@
 
 1608279340 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\stmttypes.dsl.h
 
-1620320188 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
+1621000452 source:d:\workspace\.mipt\s2\ded32\hardlang\source\parser.cpp
 	"parser.h"
 	<cassert>
 	<cstdio>
 
-1620829208 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+1621015762 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
 	"ast.h"
 	"exprtypes.dsl.h"
 	"pseudofuncs.dsl.h"
@@ -133,14 +133,16 @@
 
 1620320499 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\pseudofuncs.dsl.h
 
-1620824960 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
+1621017845 source:d:\workspace\.mipt\s2\ded32\hardlang\source\object.cpp
 	"object.h"
 	"hashtable.h"
 	<windows.h>
 	<ctime>
 	<cstdlib>
+	<cassert>
+	<algorithm>
 
-1620820921 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
+1620987545 d:\workspace\.mipt\s2\ded32\hardlang\\include\\object.h
 	<cstdint>
 	<cstdio>
 	<immintrin.h>
@@ -168,7 +170,7 @@
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
 
-1620320875 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dsl.h
+1620847591 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dsl.h
 
 1619728656 d:\workspace\.mipt\s2\ded32\hardlang\\dsl\\opcodes.dslctx.h
 
@@ -176,14 +178,15 @@
 	"opcodes.dslctx.h"
 	"opcodes.dsl.h"
 
-1620821594 d:\workspace\.mipt\s2\ded32\hardlang\\include\\symbol.h
+1621015744 d:\workspace\.mipt\s2\ded32\hardlang\\include\\symbol.h
 	<cassert>
 	"general.h"
 	"lexer.h"
 
-1620824894 source:d:\workspace\.mipt\s2\ded32\hardlang\source\symbol.cpp
+1621002384 source:d:\workspace\.mipt\s2\ded32\hardlang\source\symbol.cpp
 	"symbol.h"
 	<cstring>
 	<cstdlib>
 	<cstdio>
+	<cassert>
 
