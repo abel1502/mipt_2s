@@ -68,6 +68,7 @@
 		<Unit filename="include/vector.h" />
 		<Unit filename="include/vtable.h" />
 		<Unit filename="source/ast.cpp" />
+		<Unit filename="source/compilation.cpp" />
 		<Unit filename="source/filebuf.cpp" />
 		<Unit filename="source/fnv1a.asm">
 			<Option compiler="gcc" use="1" buildCommand="$(NASM) -f win64 $file -o $object" />

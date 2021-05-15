@@ -83,7 +83,7 @@
 	"ast.h"
 	"vector.h"
 
-1620846158 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
+1621027306 d:\workspace\.mipt\s2\ded32\hardlang\\include\\ast.h
 	"general.h"
 	"parser.h"
 	"vector.h"
@@ -121,10 +121,8 @@
 	<cassert>
 	<cstdio>
 
-1621015762 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
+1621027219 source:d:\workspace\.mipt\s2\ded32\hardlang\source\ast.cpp
 	"ast.h"
-	"exprtypes.dsl.h"
-	"pseudofuncs.dsl.h"
 	"pseudofuncs.dsl.h"
 	"exprtypes.dsl.h"
 	"exprtypes.dsl.h"
@@ -189,4 +187,9 @@
 	<cstdlib>
 	<cstdio>
 	<cassert>
+
+1621027204 source:d:\workspace\.mipt\s2\ded32\hardlang\source\compilation.cpp
+	"ast.h"
+	"exprtypes.dsl.h"
+	"pseudofuncs.dsl.h"
 

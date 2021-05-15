@@ -63,7 +63,9 @@ struct TypeSpec {
 
     bool fitsMask(Mask mask) const;
 
-    static constexpr bool isMaskUnambiguous(Mask mask);
+    static constexpr inline bool isMaskUnambiguous(Mask mask) {
+        return !(mask & (mask - 1)) && mask;
+    }
 
 };
 
