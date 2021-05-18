@@ -169,6 +169,7 @@ VarInfo Scope::getInfo(const Token *name) const {
     VarInfo vi = cur->vars.get(name->getStr(), name->getLength());
     if (vi.offset < 0)
         vi.offset -= savedSpace;
+
     return vi;
 }
 
@@ -225,6 +226,7 @@ void Scope::setParent(const Scope *new_parent) {
         assert(curOffset == 0);
 
         curOffset = parent->curOffset;
+        savedSpace = parent->savedSpace;
     }
 }
 

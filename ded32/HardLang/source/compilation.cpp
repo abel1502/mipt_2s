@@ -1772,7 +1772,7 @@ bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
     obj.getLastInstr()
         .setOp(Opcode_e::jmp_rel32)
         .setDisp(0);  // SYMBOL (name)
-    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name));
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
 
     return false;
 }
@@ -1809,7 +1809,7 @@ bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
     obj.getLastInstr()
         .setOp(Opcode_e::jmp_rel32)
         .setDisp(0);  // SYMBOL (name)
-    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name));
 
     return false;
 }
@@ -1855,7 +1855,7 @@ bool Function::compile(ObjectFactory &obj, const Program *prog) {
 
         TRY_B(obj.importFunction(name, false));  // Unmangled C-variant, impoted
 
-        TRY_B(obj.defineFunction(name, false, true));  // Mangled wrapped, exported
+        TRY_B(obj.defineFunction(name, true, true));  // Mangled wrapped, exported
 
         TRY_B(compileCCaller(obj, prog));
     } break;
