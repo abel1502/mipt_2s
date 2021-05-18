@@ -6,8 +6,12 @@ def writeInt4(int4:val);
 def writeDbl(dbl:val);
 def dbl:readDbl();
 
-def solveSquare(dbl:a, dbl:b, dbl:c) {
+import int4:callback(int4:i);
+
+export solveSquare(dbl:a, dbl:b, dbl:c) {
 	var dbl:epsilon = 1e-8;
+	
+	writeInt4(callback(665));
 	
 	if _abs_dbl(a) < epsilon {
 		solveLinear(b, c);
@@ -38,7 +42,7 @@ def solveSquare(dbl:a, dbl:b, dbl:c) {
 }
 
 
-def solveLinear(dbl:b, dbl:c) {
+static solveLinear(dbl:b, dbl:c) {
 	var dbl:epsilon = 1e-8;
 	
 	if _abs_dbl(b) < epsilon {

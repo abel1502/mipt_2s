@@ -662,10 +662,23 @@ void ObjectFactory::dump() const {
     }
 }
 
+//--------------------------------------------------------------------------------
+
+static constexpr unsigned SECTIONS_COUNT = 1;  // .text
+static constexpr unsigned SECT_TEXT = 1;
+
+struct FuncAddr_ {
+    unsigned symIdx     = -1u;
+    unsigned instrIdx   = -1u;
+
+    bool operator<(const FuncAddr_ &other) const {
+        return instrIdx < other.instrIdx;
+    }
+};
+
 static bool generateReloc(const Symbol *symbol, Vector<IMAGE_RELOCATION> &relocs,
                           unsigned virtAddr, Hashtable<unsigned> &symbolLookup,
                           unsigned ripOffset) {
-
     TRY_B(!symbol);
 
     if (!symbol->isUsed())
@@ -706,16 +719,155 @@ static bool generateReloc(const Symbol *symbol, Vector<IMAGE_RELOCATION> &relocs
     return false;
 }
 
+static bool generateSectionSymbols(const Vector<IMAGE_SECTION_HEADER> &sectionTable,
+                                   Vector<IMAGE_SYMBOL> &symbolTable, Vector<unsigned> &auxSymIdx) {
+    for (unsigned i = 0; i < sectionTable.getSize(); ++i) {  // Symbols for sections themselves
+        const IMAGE_SECTION_HEADER &cur = sectionTable[i];
+
+        TRY_B(symbolTable.append() || symbolTable.append());
+
+        IMAGE_SYMBOL &symbolEntry = symbolTable[-2];
+        IMAGE_AUX_SYMBOL &auxEntry = reinterpret_cast<IMAGE_AUX_SYMBOL &>(symbolTable[-1]);
+
+        memcpy(symbolEntry.N.ShortName, cur.Name, IMAGE_SIZEOF_SHORT_NAME);
+        symbolEntry.Value = 0;
+        symbolEntry.SectionNumber = i + 1;
+        symbolEntry.Type = 0;
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_STATIC;
+        symbolEntry.NumberOfAuxSymbols = 1;
+
+        auxSymIdx[i] = symbolTable.getSize() - 1;
+
+        // auxEntry.Section.Length = ;
+        // auxEntry.Section.NumberOfRelocations = ;
+        // auxEntry.Section.NumberOfLinenumbers = ;
+        auxEntry.Section.CheckSum = 0;
+        auxEntry.Section.Number = i + 1;  // TODO: Maybe unnecessary
+        auxEntry.Section.Selection = 0;
+    }
+
+    return false;
+}
+
+static bool generateFuncSymbol(const FuncInfo &func, const Symbol *symbol,
+                               Vector<IMAGE_SYMBOL> &symbolTable, Hashtable<unsigned> &symbolLookup,
+                               Vector<char> &strings, Vector<FuncAddr_> &funcAddrs) {
+    TRY_B(symbolTable.append())
+    IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
+
+    unsigned fNameLen = symbol->getFunctionNameLength();
+
+    if (fNameLen <= IMAGE_SIZEOF_SHORT_NAME) {
+        *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
+        memcpy((char *)symbolEntry.N.ShortName, symbol->getFunctionName(), fNameLen);
+    } else {
+        strings.extend(fNameLen + 1);
+        //strings[-1] = 0;
+        memcpy(&strings[-fNameLen - 1], symbol->getFunctionName(), fNameLen);
+
+        symbolEntry.N.LongName[0] = 0;
+        symbolEntry.N.LongName[1] = strings.getSize() - fNameLen - 1 + 4;
+    }
+
+    symbolEntry.Type = IMAGE_SYM_DTYPE_FUNCTION << 4;
+    symbolEntry.NumberOfAuxSymbols = 0;
+
+    if (func.checkImport()) {  // Externally defined
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
+        symbolEntry.Value = 0;
+        symbolEntry.SectionNumber = 0;
+    } else if (func.checkStatic()) {  // Static
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_STATIC;
+        TRY_B(funcAddrs.append({symbolTable.getSize() - 1, func.getAddr()}));
+        symbolEntry.Value = -1u;
+        symbolEntry.SectionNumber = SECT_TEXT;
+    } else {  // External
+        symbolEntry.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
+        TRY_B(funcAddrs.append({symbolTable.getSize() - 1, func.getAddr()}));
+        symbolEntry.Value = -1u;
+        symbolEntry.SectionNumber = SECT_TEXT;
+    }
+
+    TRY_B(symbolLookup.set(symbol->getFunctionName(), fNameLen, symbolTable.getSize() - 1));
+
+    return false;
+}
+
+static bool generateLabelSymbol(const Symbol *symbol, unsigned curPos, Vector<IMAGE_SYMBOL> &symbolTable,
+                                Hashtable<unsigned> &symbolLookup, Vector<char> &/*strings*/) {
+    TRY_B(symbolTable.append());
+    IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
+
+    char buf[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
+    TRY_BC(symbol->composeLabelName(buf, IMAGE_SIZEOF_SHORT_NAME + 1),
+           ERR("Too many labels, please encapsulate your code better"));
+
+    TRY_BC(symbolLookup.has(buf), ERR("Duplicate label"));
+
+    TRY_B(symbolLookup.set(buf, symbolTable.getSize() - 1));
+
+    *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
+    memcpy(symbolEntry.N.ShortName, buf, IMAGE_SIZEOF_SHORT_NAME);
+    symbolEntry.Value = curPos;
+    symbolEntry.SectionNumber = SECT_TEXT;
+    symbolEntry.Type = 0;
+    symbolEntry.StorageClass = IMAGE_SYM_CLASS_LABEL;
+    symbolEntry.NumberOfAuxSymbols = 0;
+
+    return false;
+}
+
+static bool generateLabelAlias(const ObjectFactory::LabelAlias cur, Vector<IMAGE_SYMBOL> &symbolTable,
+                               Hashtable<unsigned> &symbolLookup, Vector<char> &/*strings*/) {
+    Symbol newSymbol{},
+           oldSymbol{};
+
+    unsigned oldSymIdx = 0;
+
+    TRY_BC(newSymbol.ctorLabel(cur.newIdx) || oldSymbol.ctorLabel(cur.existentIdx),
+        newSymbol.dtor();
+        oldSymbol.dtor(););
+
+   TRY_BC(symbolTable.append(),
+        newSymbol.dtor();
+        oldSymbol.dtor(););
+
+    IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
+
+    char bufNew[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
+    TRY_BC(newSymbol.composeLabelName(bufNew, IMAGE_SIZEOF_SHORT_NAME + 1),
+        ERR("Too many labels, please encapsulate your code better");
+        newSymbol.dtor();
+        oldSymbol.dtor(););
+
+    char bufOld[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
+    TRY_BC(oldSymbol.composeLabelName(bufOld, IMAGE_SIZEOF_SHORT_NAME + 1),
+        ERR("Too many labels, please encapsulate your code better");
+        newSymbol.dtor();
+        oldSymbol.dtor(););
+
+    newSymbol.dtor();
+    oldSymbol.dtor();
+
+    TRY_BC(symbolLookup.has(bufNew), ERR("Duplicate label"));
+
+    TRY_BC(symbolLookup.get(bufOld, &oldSymIdx), ERR("Alias for a non-existent label"));
+
+    TRY_B(symbolLookup.set(bufNew, symbolTable.getSize() - 1));
+
+    symbolEntry = symbolTable[oldSymIdx];
+    *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
+    memcpy(symbolEntry.N.ShortName, bufNew, IMAGE_SIZEOF_SHORT_NAME);
+
+    return false;
+}
+
 ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
     #define ERR_(CODE)  { lastResult = CODE; goto err; }
 
     #define WRITE_(SRC, SIZE, CNT)                  \
         if (fwrite(SRC, SIZE, CNT, ofile) != CNT)   \
             ERR_(R_BADIO);
-
-    constexpr unsigned SECTIONS_COUNT = 1;  // .text
-    constexpr unsigned SECT_TEXT = 1;
-
 
     IMAGE_FILE_HEADER coffHeader{};
     Vector<IMAGE_SECTION_HEADER> sectionTable{};
@@ -724,15 +876,6 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
     Vector<IMAGE_RELOCATION> textRelocs{};
     Vector<char> textRawData{};
     Vector<unsigned> auxSymIdx{};
-
-    struct FuncAddr_ {
-        unsigned symIdx     = -1u;
-        unsigned instrIdx   = -1u;
-
-        bool operator<(const FuncAddr_ &other) const {
-            return instrIdx < other.instrIdx;
-        }
-    };
     Vector<FuncAddr_> funcAddrs{};
 
     Hashtable<unsigned> symbolLookup{};
@@ -782,79 +925,18 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
         IMAGE_SCN_MEM_EXECUTE |
         IMAGE_SCN_MEM_READ;
 
-    for (unsigned i = 0; i < sectionTable.getSize(); ++i) {  // Symbols for sections themselves
-        const IMAGE_SECTION_HEADER &cur = sectionTable[i];
-
-        if (symbolTable.append() || symbolTable.append()) ERR_(R_BADMEMORY);
-
-        IMAGE_SYMBOL &symbolEntry = symbolTable[-2];
-        IMAGE_AUX_SYMBOL &auxEntry = reinterpret_cast<IMAGE_AUX_SYMBOL &>(symbolTable[-1]);
-
-        memcpy(symbolEntry.N.ShortName, cur.Name, IMAGE_SIZEOF_SHORT_NAME);
-        symbolEntry.Value = 0;
-        symbolEntry.SectionNumber = i + 1;
-        symbolEntry.Type = 0;
-        symbolEntry.StorageClass = IMAGE_SYM_CLASS_STATIC;
-        symbolEntry.NumberOfAuxSymbols = 1;
-
-        auxSymIdx[i] = symbolTable.getSize() - 1;
-
-        // auxEntry.Section.Length = ;
-        // auxEntry.Section.NumberOfRelocations = ;
-        // auxEntry.Section.NumberOfLinenumbers = ;
-        auxEntry.Section.CheckSum = 0;
-        auxEntry.Section.Number = i + 1;  // TODO: Maybe unnecessary
-        auxEntry.Section.Selection = 0;
-    }
+    if (generateSectionSymbols(sectionTable, symbolTable, auxSymIdx))
+        ERR_(R_BADMEMORY);
 
     for (const FuncInfo &cur : funcs) {  // Symbols for functions
         const Symbol *symbol = cur.getSymbol();
         assert(symbol);
-        if (!symbol->isUsed())
-            continue;
+        if (symbol->isUsed()) {
+            assert(symbol->getType() == Symbol::T_FUNCTION);
 
-        assert(symbol->getType() == Symbol::T_FUNCTION);
-
-        if (symbolTable.append()) ERR_(R_BADMEMORY);
-        IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
-
-        unsigned fNameLen = symbol->getFunctionNameLength();
-
-        if (fNameLen <= IMAGE_SIZEOF_SHORT_NAME) {
-            *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
-            memcpy((char *)symbolEntry.N.ShortName, symbol->getFunctionName(), fNameLen);
-        } else {
-            strings.extend(fNameLen + 1);
-            //strings[-1] = 0;
-            memcpy(&strings[-fNameLen - 1], symbol->getFunctionName(), fNameLen);
-
-            symbolEntry.N.LongName[0] = 0;
-            symbolEntry.N.LongName[1] = strings.getSize() - fNameLen - 1 + 4;
-        }
-
-        symbolEntry.Type = IMAGE_SYM_DTYPE_FUNCTION << 4;
-        symbolEntry.NumberOfAuxSymbols = 0;
-
-        if (cur.checkImport()) {  // Externally defined
-            symbolEntry.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
-            symbolEntry.Value = 0;
-            symbolEntry.SectionNumber = 0;
-        } else if (cur.checkStatic()) {  // Static
-            symbolEntry.StorageClass = IMAGE_SYM_CLASS_STATIC;
-            if (funcAddrs.append({symbolTable.getSize() - 1, cur.getAddr()}))
+            if (generateFuncSymbol(cur, symbol, symbolTable, symbolLookup, strings, funcAddrs))
                 ERR_(R_BADMEMORY);
-            symbolEntry.Value = -1u;
-            symbolEntry.SectionNumber = SECT_TEXT;
-        } else {  // External
-            symbolEntry.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
-            if (funcAddrs.append({symbolTable.getSize() - 1, cur.getAddr()}))
-                ERR_(R_BADMEMORY);
-            symbolEntry.Value = -1u;
-            symbolEntry.SectionNumber = SECT_TEXT;
         }
-
-        if (symbolLookup.set(symbol->getFunctionName(), fNameLen, symbolTable.getSize() - 1))
-            ERR_(R_BADMEMORY);
     }
 
     std::sort(funcAddrs.begin(), funcAddrs.end());
@@ -878,30 +960,8 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
         if (symbol->isUsed()) {
             assert(symbol->getType() == Symbol::T_LABEL);  // Only labels are defined in the code itself
 
-            if (symbolTable.append()) ERR_(R_BADMEMORY);
-            IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
-
-            char buf[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
-            if (symbol->composeLabelName(buf, IMAGE_SIZEOF_SHORT_NAME + 1)) {
-                ERR("Too many labels, please encapsulate your code better");
+            if (generateLabelSymbol(symbol, curPos, symbolTable, symbolLookup, strings))
                 ERR_(R_BADSYMBOL);
-            }
-
-            if (symbolLookup.has(buf)) {
-                ERR("Duplicate label");
-                ERR_(R_BADSYMBOL);
-            }
-
-            if (symbolLookup.set(buf, symbolTable.getSize() - 1))
-                ERR_(R_BADMEMORY);
-
-            *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
-            memcpy(symbolEntry.N.ShortName, buf, IMAGE_SIZEOF_SHORT_NAME);
-            symbolEntry.Value = curPos;
-            symbolEntry.SectionNumber = SECT_TEXT;
-            symbolEntry.Type = 0;
-            symbolEntry.StorageClass = IMAGE_SYM_CLASS_LABEL;
-            symbolEntry.NumberOfAuxSymbols = 0;
         }
 
         curPos += cur.getLength();
@@ -909,60 +969,8 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
     }
 
     for (const LabelAlias &cur : labelAliases) {  // Symbols for duplicate labels
-        Symbol newSymbol{},
-               oldSymbol{};
-
-        unsigned oldSymIdx = 0;
-
-        if (newSymbol.ctorLabel(cur.newIdx) || oldSymbol.ctorLabel(cur.existentIdx)) {
-            newSymbol.dtor();
-            oldSymbol.dtor();
-            ERR_(R_BADMEMORY);
-        }
-
-        if (symbolTable.append()) {
-            newSymbol.dtor();
-            oldSymbol.dtor();
-            ERR_(R_BADMEMORY);
-        }
-        IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
-
-        char bufNew[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
-        if (newSymbol.composeLabelName(bufNew, IMAGE_SIZEOF_SHORT_NAME + 1)) {
-            ERR("Too many labels, please encapsulate your code better");
-            newSymbol.dtor();
-            oldSymbol.dtor();
+        if (generateLabelAlias(cur, symbolTable, symbolLookup, strings))
             ERR_(R_BADSYMBOL);
-        }
-
-        char bufOld[IMAGE_SIZEOF_SHORT_NAME + 1] = "";
-        if (oldSymbol.composeLabelName(bufOld, IMAGE_SIZEOF_SHORT_NAME + 1)) {
-            ERR("Too many labels, please encapsulate your code better");
-            newSymbol.dtor();
-            oldSymbol.dtor();
-            ERR_(R_BADSYMBOL);
-        }
-
-        newSymbol.dtor();
-        oldSymbol.dtor();
-
-        if (symbolLookup.has(bufNew)) {
-            ERR("Duplicate label");
-            ERR_(R_BADSYMBOL);
-        }
-
-        if (symbolLookup.get(bufOld, &oldSymIdx)) {
-            ERR("Alias for a non-existent label");
-            ERR_(R_BADSYMBOL);
-        }
-
-        if (symbolLookup.set(bufNew, symbolTable.getSize() - 1)) {
-            ERR_(R_BADMEMORY);
-        }
-
-        symbolEntry = symbolTable[oldSymIdx];
-        *(uint64_t *)&symbolEntry.N.ShortName = 0ull;
-        memcpy(symbolEntry.N.ShortName, bufNew, IMAGE_SIZEOF_SHORT_NAME);
     }
 
 
@@ -983,6 +991,9 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
     curPos = 0;
 
     for (const Instruction &cur : code) {
+        if (cur.isRemoved())
+            continue;
+
         unsigned curLen = cur.getLength();
 
         if (textRawData.extend(curLen))  ERR_(R_BADMEMORY);
