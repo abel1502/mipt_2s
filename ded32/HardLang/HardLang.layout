@@ -4,47 +4,7 @@
 	<ActiveTarget name="Debug" />
 	<File name="include\ast.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="9130" topLine="491" />
-		</Cursor>
-	</File>
-	<File name="dsl\tokens.dsl.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1155" topLine="19" />
-		</Cursor>
-	</File>
-	<File name="include\filebuf.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1325" topLine="67" />
-		</Cursor>
-	</File>
-	<File name="include\symbol.h" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="333" topLine="4" />
-		</Cursor>
-	</File>
-	<File name="source\general.cpp" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="677" topLine="10" />
-		</Cursor>
-	</File>
-	<File name="source\compilation.cpp" open="1" top="1" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="53273" topLine="1679" />
-		</Cursor>
-	</File>
-	<File name="include\vtable.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1377" topLine="27" />
-		</Cursor>
-	</File>
-	<File name="dsl\stmttypes.dsl.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="source\symbol.cpp" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1285" topLine="0" />
+			<Cursor1 position="9929" topLine="112" />
 		</Cursor>
 	</File>
 	<File name="dsl\exprtypes.dsl.h" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -52,19 +12,19 @@
 			<Cursor1 position="134" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="include\hashtable.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="dsl\tokens.dsl.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5972" topLine="232" />
+			<Cursor1 position="1155" topLine="1" />
 		</Cursor>
 	</File>
-	<File name="source\main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="source\general.cpp" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="3743" topLine="160" />
+			<Cursor1 position="677" topLine="10" />
 		</Cursor>
 	</File>
-	<File name="include\lexer.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="dsl\pseudofuncs.dsl.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2452" topLine="102" />
+			<Cursor1 position="2258" topLine="95" />
 		</Cursor>
 	</File>
 	<File name="include\checksum.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -72,29 +32,64 @@
 			<Cursor1 position="809" topLine="24" />
 		</Cursor>
 	</File>
-	<File name="dsl\opcodes.dsl.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="source\compilation.cpp" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5565" topLine="193" />
+			<Cursor1 position="56323" topLine="1843" />
 		</Cursor>
 	</File>
-	<File name="source\opcode.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="include\lexer.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5287" topLine="165" />
+			<Cursor1 position="2452" topLine="111" />
+		</Cursor>
+	</File>
+	<File name="include\general.h" open="1" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4312" topLine="83" />
+		</Cursor>
+	</File>
+	<File name="source\symbol.cpp" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1285" topLine="55" />
+		</Cursor>
+	</File>
+	<File name="source\parser.cpp" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4538" topLine="154" />
+		</Cursor>
+	</File>
+	<File name="include\vtable.h" open="0" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1377" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="include\object.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="8138" topLine="215" />
+			<Cursor1 position="9833" topLine="393" />
 		</Cursor>
 	</File>
-	<File name="dsl\opcodes.dslctx.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="source\object.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2266" topLine="7" />
+			<Cursor1 position="33249" topLine="1147" />
 		</Cursor>
 	</File>
-	<File name="dsl\pseudofuncs.dsl.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="dsl\opcodes.dslctx.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1400" topLine="35" />
+			<Cursor1 position="1648" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="include\hashtable.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="356" topLine="17" />
+		</Cursor>
+	</File>
+	<File name="include\filebuf.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1325" topLine="67" />
+		</Cursor>
+	</File>
+	<File name="include\dict.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="source\fnv1a.asm" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -107,24 +102,39 @@
 			<Cursor1 position="3573" topLine="202" />
 		</Cursor>
 	</File>
-	<File name="source\ast.cpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5001" topLine="247" />
-		</Cursor>
-	</File>
-	<File name="source\lexer.cpp" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3830" topLine="197" />
-		</Cursor>
-	</File>
-	<File name="include\vector.h" open="1" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2631" topLine="122" />
-		</Cursor>
-	</File>
-	<File name="include\dict.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="dsl\stmttypes.dsl.h" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="0" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="include\vector.h" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="953" topLine="33" />
+		</Cursor>
+	</File>
+	<File name="include\symbol.h" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="442" topLine="55" />
+		</Cursor>
+	</File>
+	<File name="source\main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1038" topLine="12" />
+		</Cursor>
+	</File>
+	<File name="include\opcode.h" open="1" top="1" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="5724" topLine="229" />
+		</Cursor>
+	</File>
+	<File name="source\opcode.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="6384" topLine="231" />
+		</Cursor>
+	</File>
+	<File name="source\ast.cpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4025" topLine="59" />
 		</Cursor>
 	</File>
 	<File name="include\parser.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -132,29 +142,19 @@
 			<Cursor1 position="1170" topLine="54" />
 		</Cursor>
 	</File>
-	<File name="source\parser.cpp" open="0" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="dsl\opcodes.dsl.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="7112" topLine="281" />
+			<Cursor1 position="12692" topLine="231" />
 		</Cursor>
 	</File>
-	<File name="include\opcode_enums.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="source\lexer.cpp" open="0" top="0" tabpos="16" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1486" topLine="53" />
+			<Cursor1 position="10058" topLine="516" />
 		</Cursor>
 	</File>
-	<File name="source\object.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="include\opcode_enums.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="11111" topLine="477" />
-		</Cursor>
-	</File>
-	<File name="include\general.h" open="0" top="0" tabpos="15" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3170" topLine="55" />
-		</Cursor>
-	</File>
-	<File name="include\opcode.h" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4506" topLine="159" />
+			<Cursor1 position="1224" topLine="53" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

@@ -225,13 +225,13 @@ bool Instruction::compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize
     return false;
 }
 
-Instruction &Instruction::setOp(Opcode_e new_op) {
+Instruction &Instruction::setOp(Opcode_e new_op) noexcept {
     op = new_op;
 
     return *this;
 }
 
-Instruction &Instruction::setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale) {
+Instruction &Instruction::setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale) noexcept {
     rm.mode = mode;
     rm.reg = reg;
     rm.index = index;
@@ -240,41 +240,41 @@ Instruction &Instruction::setRm(mode_t mode, reg_e reg, reg_e index, scale_e sca
     return *this;
 }
 
-Instruction &Instruction::setRmReg(reg_e reg) {
+Instruction &Instruction::setRmReg(reg_e reg) noexcept {
     return setRm({mode_t::MODE_REG, 0, mode_t::DISP_NONE}, reg, REG_A, SCALE_1);
 }
 
-Instruction &Instruction::setRmMemReg(reg_e reg, mode_t::disp_e dispMode) {
+Instruction &Instruction::setRmMemReg(reg_e reg, mode_t::disp_e dispMode) noexcept {
     return setRm({mode_t::MODE_MEM_REG, 0, dispMode}, reg, REG_A, SCALE_1);
 }
 
-Instruction &Instruction::setRmMemRip() {
+Instruction &Instruction::setRmMemRip() noexcept {
     return setRm({mode_t::MODE_MEM_RIP, 0, mode_t::DISP_32}, REG_A, REG_A, SCALE_1);
 }
 
-Instruction &Instruction::setRmSib() {
+Instruction &Instruction::setRmSib() noexcept {
     return setRm({mode_t::MODE_MEM_SIB, 0, mode_t::DISP_32}, REG_A, REG_A, SCALE_1);
 }
 
-Instruction &Instruction::setRmSib(reg_e base, mode_t::disp_e dispMode) {
+Instruction &Instruction::setRmSib(reg_e base, mode_t::disp_e dispMode) noexcept {
     return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_BASE, dispMode}, base, REG_A, SCALE_1);
 }
 
-Instruction &Instruction::setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode) {
+Instruction &Instruction::setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode) noexcept {
     return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_INDEX, dispMode}, REG_A, index, scale);
 }
 
-Instruction &Instruction::setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode) {
+Instruction &Instruction::setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode) noexcept {
     return setRm({mode_t::MODE_MEM_SIB, mode_t::SIB_INDEX | mode_t::SIB_BASE, dispMode}, base, index, scale);
 }
 
-Instruction &Instruction::setR(reg_e reg) {
+Instruction &Instruction::setR(reg_e reg) noexcept {
     r.reg = reg;
 
     return *this;
 }
 
-Instruction &Instruction::setDisp(int64_t value) {
+Instruction &Instruction::setDisp(int64_t value) noexcept {
     disp.val_q = value;
 
     return *this;
@@ -298,7 +298,7 @@ Instruction &Instruction::setDispFunc(const char *name, unsigned length) {
     return *this;
 }*/
 
-Instruction &Instruction::setImm(int64_t value) {
+Instruction &Instruction::setImm(int64_t value) noexcept {
     imm.val_q = value;
 
     return *this;

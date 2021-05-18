@@ -130,32 +130,32 @@ public:
     void dtor();
 
 
-    Instruction &setOp(Opcode_e new_op);
+    Instruction &setOp(Opcode_e new_op) noexcept;
 
     /// RM reg
-    Instruction &setRmReg(reg_e reg);
+    Instruction &setRmReg(reg_e reg) noexcept;
 
     /// RM [reg]
-    Instruction &setRmMemReg(reg_e reg, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+    Instruction &setRmMemReg(reg_e reg, mode_t::disp_e dispMode = mode_t::DISP_NONE) noexcept;
 
     /// RM [$+disp32]
-    Instruction &setRmMemRip();
+    Instruction &setRmMemRip() noexcept;
 
     /// RM [disp32]
-    Instruction &setRmSib();
+    Instruction &setRmSib() noexcept;
 
     /// RM [base </ + disp8/ + disp32>]
-    Instruction &setRmSib(reg_e base, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+    Instruction &setRmSib(reg_e base, mode_t::disp_e dispMode = mode_t::DISP_NONE) noexcept;
 
     /// RM [index * scale </ + disp8/ + disp32>]
-    Instruction &setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+    Instruction &setRmSib(reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE) noexcept;
 
     /// RM [base + index * scale </ + disp8/ + disp32>]
-    Instruction &setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE);
+    Instruction &setRmSib(reg_e base, reg_e index, scale_e scale, mode_t::disp_e dispMode = mode_t::DISP_NONE) noexcept;
 
-    Instruction &setR(reg_e reg);
+    Instruction &setR(reg_e reg) noexcept;
 
-    Instruction &setDisp(int64_t value);
+    Instruction &setDisp(int64_t value) noexcept;
 
     /*Instruction &setDispLabel(unsigned idx);
 
@@ -163,7 +163,7 @@ public:
 
     Instruction &setDispFunc(const char *name, unsigned length = -1u);*/
 
-    Instruction &setImm(int64_t value);
+    Instruction &setImm(int64_t value) noexcept;
 
 
     inline bool isRemoved() const {
@@ -234,7 +234,7 @@ private:
 
     //--------------------------------------------------------------------------------
 
-    Instruction &setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale);
+    Instruction &setRm(mode_t mode, reg_e reg, reg_e index, scale_e scale) noexcept;
 
     bool compile(PackedInstruction &pi, unsigned rmSize, unsigned rSize, unsigned dispSize, unsigned immSize,
                  unsigned variant, uint8_t prefixes[4], unsigned opSize, uint8_t opBytes[3]) const;
