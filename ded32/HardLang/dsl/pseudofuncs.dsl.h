@@ -74,6 +74,50 @@ DEF_PFUNC(DBL, Dbl, sqrt, {
         .setRmReg(PF_TOS(1));
 })
 
+DEF_PFUNC(DBL, Dbl, abs_dbl, {
+    PF_VERIFY_ARGCNT(1);
+
+    PF_REQUIRE_CHILD_TYPE(0, Dbl);
+
+    PF_COMPILE_CHILD(0);
+
+    PF_PULL(1);
+
+    PF_ADDINSTR();
+    PF_LASTINSTR()
+        .setOp(Opcode_e::pcmpeqd_rx_rm128x)
+        .setR(REG_B)
+        .setRmReg(REG_B);
+
+    PF_ADDINSTR();
+    PF_LASTINSTR()
+        .setOp(Opcode_e::psrlq_rm128x_imm8)
+        .setRmReg(REG_B)
+        .setImm(1);
+
+    PF_ADDINSTR();
+    PF_LASTINSTR()
+        .setOp(Opcode_e::movq_rx_rm64)
+        .setR(REG_A)
+        .setRmReg(PF_TOS(1));
+
+    // PF_POP();
+
+    PF_ADDINSTR();
+    PF_LASTINSTR()
+        .setOp(Opcode_e::andpd_rx_rm128x)
+        .setR(REG_A)
+        .setRmReg(REG_B);
+
+    // PF_PUSH();
+
+    PF_ADDINSTR();
+    PF_LASTINSTR()
+        .setOp(Opcode_e::movq_rm64_rx)
+        .setR(REG_A)
+        .setRmReg(PF_TOS(1));
+})
+
 /*DEF_PFUNC(VOID, Void, meow, {
     PF_VERIFY_ARGCNT(1);
 

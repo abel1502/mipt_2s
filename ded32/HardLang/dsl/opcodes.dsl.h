@@ -272,10 +272,18 @@ OPDEF(cvtsi2sd_rx_rm64,     B_(0x0F, 0x2A),   SIZE_Q, SIZE_XMM,       -1,       
 
 OPDEF(xorpd_rx_rm128x,      B_(0x0F, 0x57), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
 
+OPDEF(andpd_rx_rm128x,      B_(0x0F, 0x54), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
+
+OPDEF(orpd_rx_rm128x,       B_(0x0F, 0x56), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
+
+OPDEF(pcmpeqd_rx_rm128x,    B_(0x0F, 0x76), SIZE_XMM, SIZE_XMM,       -1,       -1, -1, {0x66})
+
+// Warning: Using anything but plain register references here will result in a crash!
+OPDEF(psrlq_rm128x_imm8,    B_(0x0F, 0x73), SIZE_XMM,       -1,       -1,   SIZE_B,  2, {0x66})
+
+
 
 /* ? rcl rcr rol ror shl shr sal sar */
-/* xmm operations */
-/* converters */
 
 
 
