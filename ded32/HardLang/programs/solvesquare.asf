@@ -2,19 +2,24 @@
 	Solves square equations
 */
 
+def writeInt4(int4:val);
+def writeDbl(dbl:val);
+def dbl:readDbl();
 
 def solveSquare(dbl:a, dbl:b, dbl:c) {
-	if a == 0. {
+	var dbl:epsilon = 1e-8;
+	
+	if _abs_dbl(a) < epsilon {
 		solveLinear(b, c);
 		ret;
 	}
 	
 	var dbl:det;  // Intentionally left uninitialized to demonstrate this is possible
 	
-	_meow(int4:(det = b * b - 4. * a * c + 0x0.0));  // Again, just randomly demonstrating language's abilities
+	/*_meow(*/int4:(det = b * b - 4. * a * c + 0x0.0)/*)*/;  // Again, just randomly demonstrating language's abilities
 	
-	if (det < 0.) {
-		int4:_print_int4(0) + 1;  // More shameless bragging
+	if (det < -epsilon) {
+		int4:writeInt4(0) + 1;  // More shameless bragging
 		ret;
 	}
 	
@@ -22,36 +27,45 @@ def solveSquare(dbl:a, dbl:b, dbl:c) {
 	var dbl:root1;
 	var dbl:root2 = (root1 = (-b - sqrt_det) / 2.) + sqrt_det;
 	
-	if (det == 0.) {
-		_print_int4(1);
-		_print_dbl(root1);
+	if (_abs_dbl(det) < epsilon) {
+		writeInt4(1);
+		writeDbl(root1);
 	} else {
-		_print_int4(2);
-		_print_dbl(root1);
-		_print_dbl(root2);
+		writeInt4(2);
+		writeDbl(root1);
+		writeDbl(root2);
 	}
 }
 
 
 def solveLinear(dbl:b, dbl:c) {
-	if b == dbl:0 {
-		if c == 0. {
-			_print_dbl(1. / .0);
+	var dbl:epsilon = 1e-8;
+	
+	if _abs_dbl(b) < epsilon {
+		if _abs_dbl(c) < epsilon {
+			writeDbl(1. / .0);
 		} else {
-			_print_int4(0);
+			writeInt4(0);
 		}
 	} else {
-		_print_int4(1);
+		writeInt4(1);
 		
-		_print_dbl(-c / b);
+		writeDbl(-c / b);
 	}
 }
 
 
 def main() {
-	solveSquare(
-		_read_dbl(), 
-		_read_dbl(), 
-		_read_dbl()
-	);
+	// Doesn't work, becuase arguments are calculated in reverse order
+	/*solveSquare(
+		readDbl(), 
+		readDbl(), 
+		readDbl()
+	);*/
+	
+	var dbl:a = readDbl();
+	var dbl:b = readDbl();
+	var dbl:c = readDbl();
+	
+	solveSquare(a, b, c);
 }

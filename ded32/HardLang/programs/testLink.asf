@@ -1,0 +1,5 @@
+def writeInt4(int4:val);
+
+def int4:testLink(int4:val) {
+	ret int4:writeInt4(val);
+}

@@ -2,6 +2,8 @@
 	Calculates Fibonacci numbers
 */
 
+def writeInt4(int4:val);
+def int4:readInt4();
 
 def int4:fib(int4:n) {
 	if n <= 0 {
@@ -17,13 +19,15 @@ def int4:fib(int4:n) {
 
 
 def main() {
-	var int4:max = _read_int4();
+	writeInt4(123);
+	
+	var int4:max = readInt4();
 	var int4:i = 0;
 	
 	while i <= max {
-		_print_int4(fib(i));
+		writeInt4(fib(i));
 		
-		_meow(i);
+		//_meow(i);
 		
 		i += 1;
 	}
