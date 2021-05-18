@@ -90,6 +90,8 @@ public:
 
         if constexpr (HAS_FACTORIES(T)) {
             TRY_B(buf[size].ctor());
+        } else {
+            buf[size] = {};
         }
 
         size++;
@@ -114,9 +116,11 @@ public:
             TRY_B(resize(capacity * 2));
         }
 
-        if constexpr (HAS_FACTORIES(T)) {
-            for (unsigned i = size; i < size + count; ++i) {
+        for (unsigned i = size; i < size + count; ++i) {
+            if constexpr (HAS_FACTORIES(T)) {
                 TRY_B(buf[i].ctor());
+            } else {
+                buf[i] = {};
             }
         }
 

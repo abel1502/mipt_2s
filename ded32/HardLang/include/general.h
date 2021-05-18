@@ -107,13 +107,14 @@ void err_(const char *funcName, int lineNo, const char *msg, ...);
 unsigned long long randLL();
 
 
+// If the ctor is overloaded, decltype(&C::ctor) fails, so we'll only check for everything else
 template <typename T>
 class TplCheckHasFactories {
     typedef char oneLongType;
     struct twoLongType { char tmp[2]; };
 
-    template <typename C> static oneLongType testCtor(decltype(&C::ctor));
-    template <typename C> static twoLongType testCtor(...);
+    /*template <typename C> static oneLongType testCtor(decltype(&C::ctor));
+    template <typename C> static twoLongType testCtor(...);*/
 
     template <typename C> static oneLongType testDtor(decltype(&C::dtor));
     template <typename C> static twoLongType testDtor(...);
@@ -126,7 +127,7 @@ class TplCheckHasFactories {
 
 public:
     static constexpr bool value =
-        sizeof(testCtor<T>(nullptr)) == sizeof(oneLongType) &&
+        /*sizeof(testCtor<T>(nullptr)) == sizeof(oneLongType) &&*/
         sizeof(testDtor<T>(nullptr)) == sizeof(oneLongType) &&
         sizeof(testCreate<T>(nullptr)) == sizeof(oneLongType) &&
         sizeof(testDestroy<T>(nullptr)) == sizeof(oneLongType);
