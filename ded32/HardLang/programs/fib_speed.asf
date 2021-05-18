@@ -1,5 +1,6 @@
 /* 
 	Calculates Fibonacci numbers
+	28,5094 miliseconds - 304 times faster than the non-native one
 */
 
 def writeInt4(int4:val);
@@ -19,13 +20,16 @@ def int4:fib(int4:n) {
 
 
 def main() {
-	writeInt4(123);
+	//writeInt4(123);
 	
-	var int4:max = readInt4();
+	var int4:max = 30/*readInt4()*/;
 	var int4:i = 0;
 	
 	while i <= max {
-		writeInt4(fib(i));
+		fib(i);
+		//writeInt4(fib(i));
+		
+		//_meow(i);
 		
 		i += 1;
 	}

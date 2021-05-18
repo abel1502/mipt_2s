@@ -664,7 +664,7 @@ void ObjectFactory::dump() const {
 
 ObjectFactory::result_e ObjectFactory::optimize() {
     // Optimize rsp shifts
-    //return R_OK;
+    return R_OK;
 
     bool isRspOpChain = false;
     int64_t delta = 0;

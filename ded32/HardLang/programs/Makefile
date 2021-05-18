@@ -1,4 +1,4 @@
-PROGRAMS = fib solvesquare test
+PROGRAMS = fib solvesquare test fib_speed
 SRC_PATH = ./
 OBJ_PATH = ./
 EXE_PATH = ./
