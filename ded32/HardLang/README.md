@@ -11,12 +11,13 @@ assembler, it creates a 64-bit x86 Windows object file.
    as well as can export x64 Windows ABI-compatible functions)
  - Several grammatic additions (such as `export` and `import` keywords for C/C++
    compatiblity)
- - Extra intrinsic functions for features abscent from the language itself, such as
-   arrays and raw memory access
+ - Extra intrinsic functions for features abscent from the language itself, ~~such as
+   arrays and raw memory access~~
+ - A standard library, including options to be used both with or without Windows UCRT
  - More to come...
 
 ## Examples
-The `./programs/` folder contains the same examples as in SoftLang
+The `./programs/` folder contains the same examples as in SoftLang, and a couple extra ones
 
 ## TODO
 This readme remains to be finished...
