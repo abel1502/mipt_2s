@@ -20,7 +20,22 @@ bool Var::reference(Instruction &instr, VarInfo vi) {
     //fprintf(ofile, "[rz+%u]", vi.offset);
 
     // TODO: Maybe optimize to DISP_8?
-    instr.setRmSib(REG_SP, Instruction::mode_t::DISP_32).setDisp(vi.offset);
+    instr.setRmSib(REG_BP, Instruction::mode_t::DISP_32).setDisp(vi.offset);
+
+    return false;
+}
+
+//================================================================================
+
+bool Scope::exit(ObjectFactory &obj) {
+    if (curOffset == 0)
+        return false;
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::add_rm64_imm32)
+        .setRmReg(REG_SP)
+        .setImm(-curOffset);
 
     return false;
 }
@@ -527,6 +542,11 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
     TRY_BC(exprType.ctor(typeMask), ERR("Ambiguous type"));
     TRY_B(exprType.type == TypeSpec::T_VOID);
 
+    // For cmp the exprType is Int4, so we need the child's one
+    if (typeMask != children[0].typeMask) {
+        TRY_B(exprType.ctor(children[0].typeMask));
+    }
+
     TRY_B(children[0].compile(obj, scope, prog));
 
     for (unsigned i = 0; i + 1 < children.getSize(); i++) {
@@ -1004,11 +1024,6 @@ bool Expression::VMIN(PolyOp, compile)(ObjectFactory &obj, Scope *scope, const P
         NODEFAULT
         }
 
-        // For cmp the exprType is Int4, so we need the child's one
-        if (typeMask != children[i].typeMask) {
-            TRY_B(exprType.ctor(children[i].typeMask));
-        }
-
         // TODO: Eventually should change poly-comparison handling to the pythonic way.
         // TODO: For now, in fact, I should probably forbid a == b == c stuff at all
     }
@@ -1392,11 +1407,29 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
     }
 
     if (children.getSize() > args->getSize()) {
-        ERR("Warning: function \"%.*s\" passed %u arguments, but takes only %u",
+        ERR("Function \"%.*s\" passed %u arguments, but takes only %u",
             name->getLength(), name->getStr(), children.getSize(), args->getSize());
+
+        return true;
     }
 
-    for (unsigned i = 0; i < args->getSize(); ++i) {
+    TRY_B(obj.stkFlush());
+
+    unsigned stkNDelta = std::max(4u, args->getSize());
+
+    TRY_B(obj.stkAlign(scope->getFrameSize(), stkNDelta));
+
+    if (stkNDelta > args->getSize()) {
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::sub_rm64_imm8)
+            .setRmReg(REG_SP)
+            .setImm(8 * (stkNDelta - args->getSize()));
+
+        obj.stkPushMem(stkNDelta - args->getSize());
+    }
+
+    for (unsigned i = args->getSize() - 1; i != -1u; --i) {
         TypeSpec::Mask childMask = children[i].deduceType((*args)[i].getType().getMask(), scope, prog);
 
         if (!childMask) {
@@ -1416,30 +1449,7 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
         children[i].compile(obj, scope, prog);
     }
 
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::sub_rm64_imm32)
-        .setRmReg(REG_SP)
-        .setImm(scope->getFrameSize());
-
-    scope->shiftFrame(-scope->getFrameSize());
-
-    for (unsigned i = 0; i < args->getSize(); ++i) {
-        TRY_B(obj.stkPull(1));
-
-        TRY_B(obj.addInstr());
-        obj.getLastInstr()
-            .setOp(Opcode_e::push_r64)
-            .setR(obj.stkTos());
-
-        TRY_B(obj.stkPop());
-    }
-
     TRY_B(obj.stkFlush());
-
-    assert(obj.stkIsEmpty());
-
-    //fprintf(ofile, "call dwl:$__func_%.*s\n", name->getLength(), name->getStr());
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
@@ -1447,21 +1457,34 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
         .setDisp(0);  // SYMBOL (name)
     TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name));
 
-    // TODO: Figure out the computation stack behaviour!
-    // We probably do a fake push (on an empty stack), which
-    // corresponds to the stkFlushExceptOne at the end of
-    // the function itself
-
-    assert(obj.stkIsEmpty());  // The object should believe this until now
-    TRY_B(obj.stkPush());
+    assert(obj.stkRegIsEmpty());  // The object should believe this until now
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::add_rm64_imm32)
+        .setOp(Opcode_e::add_rm64_imm8)
         .setRmReg(REG_SP)
-        .setImm(scope->getFrameSize() + 8 * args->getSize());
+        .setImm(8 * stkNDelta);
 
-    scope->shiftFrame(scope->getFrameSize());
+    obj.stkPopMem(stkNDelta);
+
+    TRY_B(obj.stkUnalign());
+
+    if (func->getRtype().type != TypeSpec::T_VOID) {
+        TRY_B(obj.stkPush());
+
+        if (func->getType() == Function::T_C_IMPORT) {
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::mov_rm64_r64)
+                .setRmReg(obj.stkTos())
+                .setR(REG_A);
+
+            if (func->getRtype().type == TypeSpec::T_DBL) {
+                obj.getLastInstr()
+                    .setOp(Opcode_e::movq_rm64_rx);
+            }
+        }
+    }
 
     exprType.dtor();
 
@@ -1470,13 +1493,14 @@ bool Expression::VMIN(FuncCall, compile)(ObjectFactory &obj, Scope *scope, const
 
 //================================================================================
 
-bool Code::compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog) {
-    assert(obj.stkIsEmpty());
+// TODO: Add some asserts for memory stack balance
+bool Code::compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog, const Function *func) {
+    assert(obj.stkRegIsEmpty());
 
     for (unsigned i = 0; i < stmts.getSize(); ++i) {
-        TRY_B(stmts[i].compile(obj, &scope, rtype, prog));
+        TRY_B(stmts[i].compile(obj, &scope, rtype, prog, func));
 
-        assert(obj.stkIsEmpty());
+        assert(obj.stkRegIsEmpty());
     }
 
     return false;
@@ -1484,20 +1508,22 @@ bool Code::compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog) {
 
 //================================================================================
 
-bool Statement::compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
-    return VCALL(this, compile, obj, scope, rtype, prog);
+bool Statement::compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func) {
+    return VCALL(this, compile, obj, scope, rtype, prog, func);
 }
 
 //--------------------------------------------------------------------------------
 
-bool Statement::VMIN(Compound, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Compound, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func) {
     code.getScope()->setParent(scope);
-    TRY_B(code.compile(obj, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog, func));
+
+    TRY_B(code.getScope()->exit(obj));
 
     return false;
 }
 
-bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func) {
     if (rtype.type == TypeSpec::T_VOID) {
         if (!expr.isVoid()) {
             ERR("Void functions mustn't return values");
@@ -1514,11 +1540,15 @@ bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec
         TRY_B(obj.stkFlushExceptOne());
     }
 
-    //assert(obj.stkIsEmpty());
+    // TODO: Add to rsp to clear the frame... ? Or not?
 
-    TRY_B(obj.addInstr());
+    /*TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::ret);
+        .setOp(Opcode_e::jmp_rel32)
+        .setDisp(0);  // Symbol (return from function)
+    TRY_B(obj.getLastInstr().getSymbolHere()->ctorLabel());*/
+
+    func->compileRet(obj);
 
     if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
         TRY_B(obj.stkPop());
@@ -1527,7 +1557,7 @@ bool Statement::VMIN(Return, compile)(ObjectFactory &obj, Scope *scope, TypeSpec
     return false;
 }
 
-bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func) {
     unsigned loopLbl = obj.placeLabel();
     TRY_B(loopLbl == -1u);
 
@@ -1554,7 +1584,7 @@ bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(endLbl));
 
     code.getScope()->setParent(scope);  // TODO: Maybe get rid of all of those and fix this in the parser
-    TRY_B(code.compile(obj, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog, func));
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
@@ -1567,7 +1597,7 @@ bool Statement::VMIN(Loop, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     return false;
 }
 
-bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog) {
+bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func) {
     // TODO: Maybe simplify the empty else
 
     TRY_BC(expr.deduceType(TypeSpec::AllMask & ~TypeSpec::VoidMask, scope, prog) != TypeSpec::Int4Mask,
@@ -1594,7 +1624,7 @@ bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.getLastInstr().getDispSymbol()->ctorLabel(elseLbl));
 
     code.getScope()->setParent(scope);
-    TRY_B(code.compile(obj, rtype, prog));
+    TRY_B(code.compile(obj, rtype, prog, func));
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
@@ -1605,15 +1635,23 @@ bool Statement::VMIN(Cond, compile)(ObjectFactory &obj, Scope *scope, TypeSpec r
     TRY_B(obj.placeLabel(elseLbl));
 
     altCode.getScope()->setParent(scope);
-    TRY_B(altCode.compile(obj, rtype, prog));
+    TRY_B(altCode.compile(obj, rtype, prog, func));
 
     TRY_B(obj.placeLabel(endLbl));
 
     return false;
 }
 
-bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
+bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog, const Function *) {
     TRY_B(scope->addVar(&var));
+
+    assert(obj.stkRegIsEmpty());  // And so should be the memory part, in fact
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::sub_rm64_imm8)
+        .setRmReg(REG_SP)
+        .setImm(8);
 
     TypeSpec::Mask mask = expr.deduceType(TypeSpec::VoidMask | var.getType().getMask(), scope, prog);
 
@@ -1629,13 +1667,13 @@ bool Statement::VMIN(VarDecl, compile)(ObjectFactory &obj, Scope *scope, TypeSpe
 
         TRY_B(var.reference(obj.getLastInstr(), scope));
 
-        TRY_B(obj.stkPop());  // TODO: Check  (still seems to be wrong)
+        TRY_B(obj.stkPop());
     }
 
     return false;
 }
 
-bool Statement::VMIN(Expr, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog) {
+bool Statement::VMIN(Expr, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, const Program *prog, const Function *) {
     TypeSpec::Mask mask = expr.deduceType(TypeSpec::AllMask, scope, prog);
 
     TRY_B(expr.compile(obj, scope, prog));  // Ambiguousness of the mask is checked inside
@@ -1647,155 +1685,94 @@ bool Statement::VMIN(Expr, compile)(ObjectFactory &obj, Scope *scope, TypeSpec, 
     return false;
 }
 
-bool Statement::VMIN(Empty, compile)(ObjectFactory &, Scope *, TypeSpec, const Program *) {
+bool Statement::VMIN(Empty, compile)(ObjectFactory &, Scope *, TypeSpec, const Program *, const Function *) {
     return false;
 }
 
 //================================================================================
 
-bool Function::compileBody(ObjectFactory &obj, const Program *prog) {
-    obj.stkReset();
-
-    code.getScope()->setParent(nullptr);
-    TRY_B(code.compile(obj, rtype, prog));
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::ret);  // Equivalent to either returning void or a garbage value,
-                                // DOESN'T break the stack or anything
-
-    return false;
-}
-
 constexpr unsigned CARGS_REGS_SIZE = 4;
 constexpr reg_e CARGS_REGS[CARGS_REGS_SIZE] = {REG_C, REG_D, REG_8, REG_9};
 constexpr reg_e CARGS_REGS_XMM[CARGS_REGS_SIZE] = {(reg_e)0, (reg_e)1, (reg_e)2, (reg_e)3};
 
+constexpr unsigned CSAVED_SPACE = 64;
+constexpr unsigned CSAVED_REGS_SIZE = 7;
+constexpr reg_e CSAVED_REGS[CSAVED_REGS_SIZE] = {REG_12, REG_13, REG_14, REG_15, REG_DI, REG_SI, REG_B};
+
+bool Function::compileBody(ObjectFactory &obj, const Program *prog) {
+    obj.stkReset();
+
+    code.getScope()->setParent(nullptr);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::push_rm64)
+        .setRmReg(REG_BP);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_rm64_r64)
+        .setRmReg(REG_BP)
+        .setR(REG_SP);
+
+    if (type == T_C_EXPORT) {
+        for (unsigned i = 0; i < CSAVED_REGS_SIZE; ++i) {
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::mov_rm64_r64)
+                .setRmSib(REG_SP, Instruction::mode_t::DISP_8)
+                .setDisp(-8 * (i + 1))
+                .setR(CSAVED_REGS[i]);
+        }
+
+        TRY_B(obj.addInstr());
+        obj.getLastInstr()
+            .setOp(Opcode_e::sub_rm64_imm8)
+            .setRmReg(REG_SP)
+            .setImm(CSAVED_SPACE);
+    }
+
+    TRY_B(code.compile(obj, rtype, prog, this));
+
+    compileRet(obj);  // Equivalent to either returning void or a garbage value,
+                      // DOESN'T break the stack or anything
+
+    return false;
+}
+
 bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
     /*
 
-    regstk   <- stack (return address)
-    regstk   <- savedStk
-    flush
-    savedStk <- curStk
-
     changeArgs (to registers)
-    pad_stk
-    call
-    unpad_stk
-
-    curStk   <- savedStk
-    pull 2
-    regstk   -> savedStk
-    regstk   -> stack (return address)
-
-    regstk   <- rax
-
-    ret
+    jmp
 
     */
 
     obj.stkReset();
 
-    TRY_B(obj.stkPush());
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::pop_rm64)
-        .setRmReg(obj.stkTos());
-
-    TRY_B(obj.stkPush());
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_r64_rm64)
-        .setR(obj.stkTos())
-        .setRmMemRip()
-        .setDisp(0);
-    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
-
-    TRY_B(obj.stkFlush());
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_rm64_r64)
-        .setRmMemRip()
-        .setDisp(0)
-        .setR(REG_BP);
-    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
-
     for (unsigned i = 0; i < CARGS_REGS_SIZE && i < args.getSize(); ++i) {
         TRY_B(obj.addInstr());
-        obj.getLastInstr()
-            .setOp(Opcode_e::pop_rm64)
-            .setRmReg(CARGS_REGS[i]);
 
         if (args[i].getType().type == TypeSpec::T_DBL) {
-            TRY_B(obj.addInstr());
             obj.getLastInstr()
                 .setOp(Opcode_e::movq_rx_rm64)
-                .setR(CARGS_REGS_XMM[i])
-                .setRmReg(CARGS_REGS[i]);
-        }
-    }
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::sub_rm64_imm8)
-        .setRmReg(REG_SP)
-        .setImm(32);
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::call_rel32)
-        .setDisp(0);  // SYMBOL (name)
-    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::add_rm64_imm8)
-        .setRmReg(REG_SP)
-        .setImm(32);
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_r64_rm64)
-        .setR(REG_BP)
-        .setRmMemRip()
-        .setDisp(0);
-    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
-
-    TRY_B(obj.stkPull(2));
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_r64_rm64)
-        .setR(REG_BP)
-        .setRmReg(obj.stkTos());
-    TRY_B(obj.stkPop());
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::push_rm64)
-        .setRmReg(obj.stkTos());
-    TRY_B(obj.stkPop());
-
-    if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
-        TRY_B(obj.stkPush());
-
-        TRY_B(obj.addInstr());
-        if (rtype.type == TypeSpec::T_DBL) {
-            obj.getLastInstr().setOp(Opcode_e::movq_rm64_rx);
+                .setR(CARGS_REGS_XMM[i]);
         } else {
-            obj.getLastInstr().setOp(Opcode_e::mov_rm64_r64);
+            obj.getLastInstr()
+                .setOp(Opcode_e::mov_r64_rm64)
+                .setR(CARGS_REGS[i]);
         }
 
         obj.getLastInstr()
-            .setRmReg(obj.stkTos())
-            .setR(REG_A);
+            .setRmSib(REG_SP, Instruction::mode_t::DISP_8)
+            .setDisp(8 * (i + 1));
     }
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::ret);
+        .setOp(Opcode_e::jmp_rel32)
+        .setDisp(0);  // SYMBOL (name)
+    TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name));
 
     return false;
 }
@@ -1803,50 +1780,12 @@ bool Function::compileCCaller(ObjectFactory &obj, const Program *) {
 bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
     /*
 
-    regstk   <- stack (return address)
-    regstk   <- rbp
-
-    curStk   <- savedStk
-    flush
-
     changeArgs (from regs to padded space)
-    call
-
-    savedStk <- curStk
-    pull 2
-    regstk   -> rbp
-    regstk   -> stack (return address)
-
-    regstk   -> rax
-
-    ret
+    jmp
 
     */
 
     obj.stkReset();
-
-    TRY_B(obj.stkPush());
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::pop_rm64)
-        .setRmReg(obj.stkTos());
-
-    TRY_B(obj.stkPush());
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_rm64_r64)
-        .setRmReg(obj.stkTos())
-        .setR(REG_BP);
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_r64_rm64)
-        .setR(REG_BP)
-        .setRmMemRip()
-        .setDisp(0);
-    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
-
-    TRY_B(obj.stkFlush());
 
     for (unsigned i = 0; i < CARGS_REGS_SIZE && i < args.getSize(); ++i) {
         TRY_B(obj.addInstr());
@@ -1863,56 +1802,14 @@ bool Function::compileCCallee(ObjectFactory &obj, const Program *) {
 
         obj.getLastInstr()
             .setRmSib(REG_SP, Instruction::mode_t::DISP_8)
-            .setDisp(8 * i);
+            .setDisp(8 * (i + 1));
     }
 
     TRY_B(obj.addInstr());
     obj.getLastInstr()
-        .setOp(Opcode_e::call_rel32)
+        .setOp(Opcode_e::jmp_rel32)
         .setDisp(0);  // SYMBOL (name)
     TRY_B(obj.getLastInstr().getDispSymbol()->ctorFunction(name->getStr(), name->getLength()));
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_rm64_r64)
-        .setRmMemRip()
-        .setDisp(0)
-        .setR(REG_BP);
-    TRY_B(obj.getLastInstr().getSymbolHere()->ctorSavedStk());
-
-    TRY_B(obj.stkPull(2));
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::mov_r64_rm64)
-        .setR(REG_BP)
-        .setRmReg(obj.stkTos());
-    TRY_B(obj.stkPop());
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::push_rm64)
-        .setRmReg(obj.stkTos());
-    TRY_B(obj.stkPop());
-
-    if (rtype.type != TypeSpec::T_VOID) {  // TODO: Unnecessary?
-        TRY_B(obj.stkPush());
-
-        TRY_B(obj.addInstr());
-        if (rtype.type == TypeSpec::T_DBL) {
-            obj.getLastInstr().setOp(Opcode_e::movq_rx_rm64);
-        } else {
-            obj.getLastInstr().setOp(Opcode_e::mov_r64_rm64);
-        }
-
-        obj.getLastInstr()
-            .setR(REG_A)
-            .setRmReg(obj.stkTos());
-    }
-
-    TRY_B(obj.addInstr());
-    obj.getLastInstr()
-        .setOp(Opcode_e::ret);
 
     return false;
 }
@@ -1965,6 +1862,36 @@ bool Function::compile(ObjectFactory &obj, const Program *prog) {
 
     NODEFAULT
     }
+
+    return false;
+}
+
+bool Function::compileRet(ObjectFactory &obj) const {
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::mov_rm64_r64)
+        .setRmReg(REG_SP)
+        .setR(REG_BP);
+
+    if (type == T_C_EXPORT) {
+        for (unsigned i = 0; i < CSAVED_REGS_SIZE; ++i) {
+            TRY_B(obj.addInstr());
+            obj.getLastInstr()
+                .setOp(Opcode_e::mov_r64_rm64)
+                .setRmSib(REG_BP, Instruction::mode_t::DISP_8)
+                .setDisp(-8 * (i + 1))
+                .setR(CSAVED_REGS[i]);
+        }
+    }
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::pop_rm64)
+        .setRmReg(REG_BP);
+
+    TRY_B(obj.addInstr());
+    obj.getLastInstr()
+        .setOp(Opcode_e::ret);
 
     return false;
 }

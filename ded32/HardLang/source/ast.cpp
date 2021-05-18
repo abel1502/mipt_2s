@@ -4,7 +4,7 @@
 namespace abel {
 
 bool TypeSpec::ctor() {
-    type = TypeSpec::T_VOID;
+    type = T_VOID;
 
     return false;
 }
@@ -29,7 +29,7 @@ bool TypeSpec::ctor(Mask mask) {
 }
 
 void TypeSpec::dtor() {
-    type = TypeSpec::T_VOID;
+    type = T_VOID;
 }
 
 void TypeSpec::reconstruct(FILE *ofile) const {
@@ -37,19 +37,19 @@ void TypeSpec::reconstruct(FILE *ofile) const {
     #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
     switch (type) {
-    case TypeSpec::T_DBL:
+    case T_DBL:
         fprintf(ofile, "dbl:");
         break;
 
-    case TypeSpec::T_INT4:
+    case T_INT4:
         fprintf(ofile, "int4:");
         break;
 
-    case TypeSpec::T_INT8:
+    case T_INT8:
         fprintf(ofile, "int8:");
         break;
 
-    case TypeSpec::T_VOID:
+    case T_VOID:
         fprintf(ofile, "???:");
         ERR("Void is not a valid type");
         // FALLTHROUGH
@@ -61,16 +61,16 @@ void TypeSpec::reconstruct(FILE *ofile) const {
 
 uint32_t TypeSpec::getSize() const {
     switch (type) {
-    case TypeSpec::T_DBL:
+    case T_DBL:
         return 8;
 
-    case TypeSpec::T_INT4:
+    case T_INT4:
         return 4;
 
-    case TypeSpec::T_INT8:
+    case T_INT8:
         return 8;
 
-    case TypeSpec::T_VOID:
+    case T_VOID:
         return 0;  // TODO: Fail?
 
     NODEFAULT
@@ -81,7 +81,7 @@ TypeSpec::Mask TypeSpec::getMask() const {
     return 1 << type;
 }
 
-bool TypeSpec::fitsMask(TypeSpec::Mask mask) const {
+bool TypeSpec::fitsMask(Mask mask) const {
     return getMask() & mask;
 }
 
@@ -139,19 +139,17 @@ const Token *Var::getName() const {
 bool Scope::ctor() {
     TRY_B(vars.ctor());
     curOffset = 0;
-    curDelta = 0;
+    savedSpace = 0;
     parent = nullptr;
 
     return false;
 }
 
 void Scope::dtor() {
-    assert(curDelta == 0);
-
     vars.dtor();
     parent = nullptr;
     curOffset = 0;
-    curDelta = 0;
+    savedSpace = 0;
 }
 
 VarInfo Scope::getInfo(const Var *var) const {
@@ -169,7 +167,8 @@ VarInfo Scope::getInfo(const Token *name) const {
         return {0, nullptr};
 
     VarInfo vi = cur->vars.get(name->getStr(), name->getLength());
-    vi.offset += curDelta;
+    if (vi.offset < 0)
+        vi.offset -= savedSpace;
     return vi;
 }
 
@@ -210,7 +209,7 @@ bool Scope::addArg(const Var *arg, unsigned idx) {
         return true;
     }
 
-    TRY_B(vars.set(arg->getName()->getStr(), arg->getName()->getLength(), {(int32_t)(8 * (idx + 1)), arg}));  // TODO: Check
+    TRY_B(vars.set(arg->getName()->getStr(), arg->getName()->getLength(), {(int32_t)(8 * (idx + 2)), arg}));  // TODO: Check
 
     return false;
 }
@@ -230,24 +229,18 @@ void Scope::setParent(const Scope *new_parent) {
 }
 
 uint32_t Scope::getFrameSize() const {
-    uint32_t result = 0;
+    return -curOffset;
+    /*uint32_t result = 0;
     const Scope *cur = this;
 
     while (cur) {
-        result += -(cur->curOffset);
+        uint32_t curSize = -(cur->curOffset);
+        result += curSize;
 
         cur = cur->parent;
     }
 
-    return result;
-}
-
-int32_t Scope::getCurDelta() const {
-    return curDelta;
-}
-
-void Scope::shiftFrame(int32_t delta) {
-    curDelta += delta;
+    return result;*/
 }
 
 //================================================================================
@@ -1136,6 +1129,14 @@ void Function::reconstruct(FILE *ofile) const {
     code.reconstruct(ofile, 1);
 
     fprintf(ofile, "}\n\n");
+}
+
+void Function::setType(type_e new_type) {
+    type = new_type;
+
+    if (type == T_C_EXPORT) {
+        code.getScope()->allocSavedSpace(64);  // R12, R13, R14, R15, RDI, RSI, RBX + one spare cell for alignment
+    }
 }
 
 //================================================================================

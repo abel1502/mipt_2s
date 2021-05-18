@@ -69,14 +69,6 @@ bool Symbol::ctorFunction(const char *new_name, unsigned new_length) {
     return false;
 }
 
-bool Symbol::ctorSavedStk() {
-    assert(type == T_NONE);
-
-    type = T_SAVEDSTK;
-
-    return false;
-}
-
 void Symbol::dtor() {
     if (type == T_FUNCTION) {
         free(name);

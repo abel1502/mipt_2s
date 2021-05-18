@@ -349,8 +349,10 @@ ObjectFactory::result_e ObjectFactory::ctor() {
         return lastResult = R_BADMEMORY;
     }
 
-    stkCurTos = 0;
-    stkCurSize = 0;
+    stkCurTos       = 0;
+    stkCurSize      = 0;
+    stkCurMem       = 0;
+    stkWasAligned   = false;
 
     bypass = false;
 
@@ -364,8 +366,10 @@ void ObjectFactory::dtor() {
 }
 
 void ObjectFactory::stkReset() {
-    stkCurTos = 0;
-    stkCurSize = 0;
+    stkCurTos       = 0;
+    stkCurSize      = 0;
+    stkCurMem       = 0;
+    stkWasAligned   = 0;
 }
 
 reg_e ObjectFactory::stkTos(unsigned depth) const {
@@ -378,20 +382,12 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
     if (stkCurSize == REGSTK_SIZE) {
         bypass = true;
 
-        TRY(addInstr());
-        getLastInstr().setOp(Opcode_e::add_rm64_imm32)
-                      .setRmReg(REG_BP)
-                      .setImm(8 * REGSTK_SIZE / 2);
+        stkPushMem();
 
-        for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
-            TRY(addInstr());
-            getLastInstr().setOp(Opcode_e::mov_rm64_r64)
-                          .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                          .setR(stkTos(REGSTK_SIZE - i))
-                          .setDisp(8 * (i - REGSTK_SIZE / 2));
-        }
+        getLastInstr().setOp(Opcode_e::push_rm64)
+                      .setRmReg(stkTos(0));
 
-        stkCurSize = REGSTK_SIZE / 2;
+        stkCurSize--;
 
         bypass = false;
     }
@@ -404,26 +400,9 @@ ObjectFactory::result_e ObjectFactory::stkPush() {
 
 ObjectFactory::result_e ObjectFactory::stkPop() {
     if (stkCurSize == 0) {
-        assert(false);  // Shouldn't be reachable, in fact
+        assert(false);  // People should pull before popping
 
-        bypass = true;
-
-        TRY(addInstr());
-        getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
-                      .setRmReg(REG_BP)
-                      .setImm(8 * REGSTK_SIZE / 2);
-
-        for (unsigned i = 0; i < REGSTK_SIZE / 2; ++i) {
-            TRY(addInstr());
-            getLastInstr().setOp(Opcode_e::mov_r64_rm64)
-                          .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                          .setR(stkTos(REGSTK_SIZE - i))
-                          .setDisp(8 * (i - REGSTK_SIZE / 2));
-        }
-
-        stkCurSize = REGSTK_SIZE / 2;
-
-        bypass = false;
+        return lastResult = R_BADCONTRACT;
     }
 
     stkCurTos = (REGSTK_SIZE + stkCurTos - 1) % REGSTK_SIZE;
@@ -433,26 +412,18 @@ ObjectFactory::result_e ObjectFactory::stkPop() {
 }
 
 ObjectFactory::result_e ObjectFactory::stkFlush() {
-    if (stkCurSize == 0)
-        return lastResult = R_OK;
-
     bypass = true;
 
-    TRY(addInstr());
-    getLastInstr().setOp(Opcode_e::add_rm64_imm32)
-                  .setRmReg(REG_BP)
-                  .setImm(8 * stkCurSize);
+    stkPushMem(stkCurSize);
 
     for (unsigned i = 0; i < stkCurSize; ++i) {
         TRY(addInstr());
-        getLastInstr().setOp(Opcode_e::mov_rm64_r64)
-                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                      .setR(stkTos(stkCurSize - i))
-                      .setDisp(8 * (i - stkCurSize));
+        getLastInstr().setOp(Opcode_e::push_rm64)
+                      .setRmReg(stkTos(stkCurSize - i));
     }
 
     stkCurSize = 0;
-    stkCurTos = 0;  // This allows to use flushing as a way to align computation stacks between two separate code segements
+    stkCurTos = 0;
 
     bypass = false;
 
@@ -466,36 +437,27 @@ ObjectFactory::result_e ObjectFactory::stkFlushExceptOne() {
         TRY(stkPull(1));
     }
 
-    if (stkCurSize == 1)
-        return lastResult = R_OK;
-
     bypass = true;
 
-    unsigned toFlush = stkCurSize - 1;
+    stkPushMem(stkCurSize - 1);
 
-    TRY(addInstr());
-    getLastInstr().setOp(Opcode_e::add_rm64_imm32)
-                  .setRmReg(REG_BP)
-                  .setImm(8 * toFlush);
-
-    for (unsigned i = 0; i < toFlush; ++i) {
+    for (unsigned i = 0; i < stkCurSize - 1; ++i) {
         TRY(addInstr());
-        getLastInstr().setOp(Opcode_e::mov_rm64_r64)
-                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                      .setR(stkTos(stkCurSize - i))
-                      .setDisp(8 * (i - toFlush));
+        getLastInstr().setOp(Opcode_e::push_rm64)
+                      .setRmReg(stkTos(stkCurSize - i));
     }
 
     stkCurSize = 1;
+    stkCurTos = (stkCurTos - (stkCurSize - 1) + REGSTK_SIZE) % REGSTK_SIZE;
 
-    if (stkCurTos != 0) {
+    if (stkCurTos != 1) {
         TRY(addInstr());
         getLastInstr().setOp(Opcode_e::mov_rm64_r64)
                       .setRmReg(REGSTK_REGS[0])
                       .setR(stkTos());
-    }
 
-    stkCurTos = 0;
+        stkCurTos = 1;
+    }
 
     bypass = false;
 
@@ -510,25 +472,58 @@ ObjectFactory::result_e ObjectFactory::stkPull(unsigned req) {
 
     bypass = true;
 
-    // We can't afford this, as the volume of the memory part of the stack may be less than 4
-    // req = (req + 3) / (REGSTK_SIZE / 2) * (REGSTK_SIZE / 2);  // So that we only do patches of 4
-
-    TRY(addInstr());
-    getLastInstr().setOp(Opcode_e::sub_rm64_imm32)
-                  .setRmReg(REG_BP)
-                  .setImm(8 * (req - stkCurSize));
+    stkPopMem(req - stkCurSize);
+    stkCurTos = (stkCurTos + req - stkCurSize) % REGSTK_SIZE;
 
     for (unsigned i = 0; i < req - stkCurSize; ++i) {
         TRY(addInstr());
-        getLastInstr().setOp(Opcode_e::mov_r64_rm64)
-                      .setRmMemReg(REG_BP, Instruction::mode_t::DISP_8)
-                      .setR(stkTos(stkCurSize + i))
-                      .setDisp(-8 * (req - stkCurSize - i));
+        getLastInstr().setOp(Opcode_e::pop_rm64)
+                      .setRmReg(stkTos(i + 1));
     }
 
     stkCurSize = req;
 
     bypass = false;
+
+    return lastResult = R_OK;
+}
+
+void ObjectFactory::stkPushMem(unsigned count) {
+    //assert(!stkWasAligned);
+    stkCurMem += count;
+}
+
+void ObjectFactory::stkPopMem(unsigned count) {
+    //assert(!stkWasAligned);
+    stkCurMem -= count;
+}
+
+ObjectFactory::result_e ObjectFactory::stkAlign(unsigned frameSize, unsigned nArgs) {
+    if (stkIsAligned() ^ (bool)((frameSize + nArgs * 8) & 15))
+        return lastResult = R_OK;
+
+    assert(!stkWasAligned);
+
+    TRY(addInstr());
+    getLastInstr().setOp(Opcode_e::sub_rm64_imm8)
+                  .setRmReg(REG_SP)
+                  .setImm(8);
+
+    stkWasAligned = true;
+
+    return lastResult = R_OK;
+}
+
+ObjectFactory::result_e ObjectFactory::stkUnalign() {
+    if (!stkWasAligned)
+        return lastResult = R_OK;
+
+    TRY(addInstr());
+    getLastInstr().setOp(Opcode_e::add_rm64_imm8)
+                  .setRmReg(REG_SP)
+                  .setImm(8);
+
+    stkWasAligned = false;
 
     return lastResult = R_OK;
 }
@@ -700,12 +695,6 @@ static bool generateReloc(const Symbol *symbol, Vector<IMAGE_RELOCATION> &relocs
 
     } break;
 
-    case Symbol::T_SAVEDSTK: {
-        TRY_BC(symbolLookup.get(Symbol::SYM_SAVEDSTK, Symbol::SYM_SAVEDSTK_LEN, &symbolIndex),
-               ERR("Saved stack counter storage cannot be found"));
-
-    } break;
-
     case Symbol::T_NONE:
     NODEFAULT
     }
@@ -724,11 +713,8 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
         if (fwrite(SRC, SIZE, CNT, ofile) != CNT)   \
             ERR_(R_BADIO);
 
-    constexpr unsigned SECTIONS_COUNT = 2;  // .text and .stk
+    constexpr unsigned SECTIONS_COUNT = 1;  // .text
     constexpr unsigned SECT_TEXT = 1;
-    constexpr unsigned SECT_STK = 2;
-
-    constexpr unsigned STK_MEMORY_SIZE = 0x4000;  // Includes the saved stack counter (8 bytes)
 
 
     IMAGE_FILE_HEADER coffHeader{};
@@ -751,8 +737,7 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
 
     Hashtable<unsigned> symbolLookup{};
 
-    IMAGE_SECTION_HEADER *sectText = nullptr,
-                         *sectStk  = nullptr;
+    IMAGE_SECTION_HEADER *sectText = nullptr;
 
     unsigned curPos = 0;
     unsigned instrIdx = 0;
@@ -771,7 +756,6 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
     if (symbolLookup.ctor())                    ERR_(R_BADMEMORY);
 
     sectText = &sectionTable[SECT_TEXT - 1];
-    sectStk  = &sectionTable[SECT_STK  - 1];
 
     coffHeader.Machine = IMAGE_FILE_MACHINE_AMD64;
     coffHeader.NumberOfSections = SECTIONS_COUNT;
@@ -798,21 +782,6 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
         IMAGE_SCN_MEM_EXECUTE |
         IMAGE_SCN_MEM_READ;
 
-    strcpy((char *)sectStk->Name, ".stk");
-    sectStk->Misc.VirtualSize = 0;
-    sectStk->VirtualAddress = 0;
-    sectStk->SizeOfRawData = STK_MEMORY_SIZE;
-    sectStk->PointerToRawData = 0;
-    sectStk->PointerToRelocations = 0;
-    sectStk->PointerToLinenumbers = 0;
-    sectStk->NumberOfRelocations = 0;
-    sectStk->NumberOfLinenumbers = 0;
-    sectStk->Characteristics =
-        IMAGE_SCN_ALIGN_8BYTES |  // Just in case
-        IMAGE_SCN_CNT_UNINITIALIZED_DATA |
-        IMAGE_SCN_MEM_READ |
-        IMAGE_SCN_MEM_WRITE;
-
     for (unsigned i = 0; i < sectionTable.getSize(); ++i) {  // Symbols for sections themselves
         const IMAGE_SECTION_HEADER &cur = sectionTable[i];
 
@@ -838,22 +807,6 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
         auxEntry.Section.Selection = 0;
     }
 
-    // TODO: Place in the standard library!!!
-    // TODO: In the entrypoint, set value to 8 or more initially
-    {  // Symbol for saved stk counter
-    if (symbolTable.append()) ERR_(R_BADMEMORY);
-    IMAGE_SYMBOL &symbolEntry = symbolTable[-1];
-
-    static_assert(Symbol::SYM_SAVEDSTK_LEN <= IMAGE_SIZEOF_SHORT_NAME);
-
-    memcpy(symbolEntry.N.ShortName, Symbol::SYM_SAVEDSTK, Symbol::SYM_SAVEDSTK_LEN);
-    symbolEntry.Value = 0;
-    symbolEntry.SectionNumber = SECT_STK;
-    symbolEntry.Type = 0;
-    symbolEntry.StorageClass = IMAGE_SYM_CLASS_EXTERNAL;
-    symbolEntry.NumberOfAuxSymbols = 0;
-    }
-
     for (const FuncInfo &cur : funcs) {  // Symbols for functions
         const Symbol *symbol = cur.getSymbol();
         assert(symbol);
@@ -872,10 +825,11 @@ ObjectFactory::result_e ObjectFactory::compile(FILE *ofile) const {
             memcpy((char *)symbolEntry.N.ShortName, symbol->getFunctionName(), fNameLen);
         } else {
             strings.extend(fNameLen + 1);
+            //strings[-1] = 0;
             memcpy(&strings[-fNameLen - 1], symbol->getFunctionName(), fNameLen);
 
             symbolEntry.N.LongName[0] = 0;
-            symbolEntry.N.LongName[1] = strings.getSize() - fNameLen - 1;
+            symbolEntry.N.LongName[1] = strings.getSize() - fNameLen - 1 + 4;
         }
 
         symbolEntry.Type = IMAGE_SYM_DTYPE_FUNCTION << 4;

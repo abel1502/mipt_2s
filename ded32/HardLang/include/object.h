@@ -321,6 +321,7 @@ public:
         R_BADIO,
         R_BADSYMBOL,
         R_BADINSTR,
+        R_BADCONTRACT,
         R_NOTIMPL,
         // TODO
     };
@@ -341,20 +342,36 @@ public:
 
     reg_e stkTos(unsigned depth = 1) const;
 
-    ObjectFactory::result_e stkPush();
+    result_e stkPush();
 
-    ObjectFactory::result_e stkPop();
+    result_e stkPop();
 
     /// Move the stack's contents to the memory, leaving at most `except` behind
-    ObjectFactory::result_e stkFlush();
+    result_e stkFlush();
 
     /// Same as flush, but maintains the tos in the zeroth register as the return value
-    ObjectFactory::result_e stkFlushExceptOne();
+    result_e stkFlushExceptOne();
 
     /// Move the stack's contents to the registers, ensuring at least `req` being pulled
-    ObjectFactory::result_e stkPull(unsigned req = 0);
+    result_e stkPull(unsigned req = 0);
 
-    inline bool stkIsEmpty() const {
+    /// Increase the memory stack alignment counter
+    void stkPushMem(unsigned count = 1);
+
+    /// Decrease the memory stack alignment counter
+    void stkPopMem(unsigned count = 1);
+
+    /// If necessary, increase the stack pointer to ensure 16-byte alignment after nArgs args are pushed
+    result_e stkAlign(unsigned frameSize, unsigned nArgs);
+
+    /// Revert the last stkAlign
+    result_e stkUnalign();
+
+    inline bool stkIsAligned() const {
+        return !(stkCurMem & 0b1);  // Same as modulo division, but handles negativeness correctly
+    }
+
+    inline bool stkRegIsEmpty() const {
         return stkCurSize == 0;
     }
 
@@ -399,8 +416,10 @@ private:
     unsigned nextLabelIdx;
     Symbol scheduledLabel;
 
-    unsigned stkCurTos;
-    unsigned stkCurSize;
+    unsigned stkCurTos;     /// TOS 0 (first free cell) register index
+    unsigned stkCurSize;    /// Size of the register part of the stack
+    int      stkCurMem;     /// Size of the memory part of the stack (might be negative)
+    bool     stkWasAligned; /// Whether the stack was aligned and needs to be reverted
 
     mutable bool bypass;
 

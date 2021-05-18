@@ -136,19 +136,21 @@ public:
 
     bool addArg(const Var *arg, unsigned idx);
 
+    inline void allocSavedSpace(uint32_t delta) {
+        savedSpace += delta;
+    }
+
     void setParent(const Scope *new_parent);
 
     uint32_t getFrameSize() const;
 
-    int32_t getCurDelta() const;
-
-    void shiftFrame(int32_t delta);
+    bool exit(ObjectFactory &obj);
 
 private:
 
     const Scope *parent;
     int32_t curOffset;
-    int32_t curDelta;
+    uint32_t savedSpace;
     Hashtable<VarInfo> vars;
 
 };
@@ -314,7 +316,7 @@ public:
 
     void simplifyLastEmpty();
 
-    bool compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog);
+    bool compile(ObjectFactory &obj, TypeSpec rtype, const Program *prog, const Function *func);
 
     void reconstruct(FILE *ofile, unsigned indent) const;
 
@@ -334,7 +336,7 @@ public:
 
     VTABLE_STRUCT {
         VDECL(Statement, void, dtor);
-        VDECL(Statement, bool, compile, ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
+        VDECL(Statement, bool, compile, ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func);
         VDECL(Statement, void, reconstruct, FILE *ofile, unsigned indent) const;
     };
 
@@ -372,7 +374,7 @@ public:
 
     bool makeVar(Var **out_var);
 
-    bool compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
+    bool compile(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func);
 
     void reconstruct(FILE *ofile, unsigned indent) const;
 
@@ -400,7 +402,7 @@ private:
     #undef DEF_TYPE
 
     #define DEF_TYPE(NAME) \
-        bool VMIN(NAME, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog);
+        bool VMIN(NAME, compile)(ObjectFactory &obj, Scope *scope, TypeSpec rtype, const Program *prog, const Function *func);
     #include "stmttypes.dsl.h"
     #undef DEF_TYPE
 
@@ -444,6 +446,8 @@ public:
 
     bool compile(ObjectFactory &obj, const Program *prog);
 
+    bool compileRet(ObjectFactory &obj) const;
+
     bool isMain() const;
 
     TypeSpec getRtype() const;
@@ -458,9 +462,7 @@ public:
         return type;
     }
 
-    inline void setType(type_e new_type) {
-        type = new_type;
-    }
+    void setType(type_e new_type);
 
     inline bool getHasCode() const {
         return hasCode;

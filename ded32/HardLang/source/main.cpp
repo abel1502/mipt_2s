@@ -213,6 +213,10 @@ int main(int argc, char **argv) {
             ERR("Encountered a corrupt instruction while assembling the object file");
             return 4;
 
+        case of.R_BADCONTRACT:
+            ERR("Internal error (some contract condition not satisfied)");
+            // Fallthrough
+
         case of.R_NOTIMPL:
         NODEFAULT
         }
