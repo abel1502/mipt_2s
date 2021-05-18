@@ -402,6 +402,8 @@ public:
 
     //--------------------------------------------------------------------------------
 
+    result_e optimize();
+
     result_e compile(FILE *ofile) const;
 
     void dump() const;

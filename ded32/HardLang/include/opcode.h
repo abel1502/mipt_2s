@@ -174,6 +174,10 @@ public:
         removed = true;
     }
 
+    inline void restore() {
+        removed = false;
+    }
+
     unsigned getLength() const;
 
     unsigned getDispOffset(unsigned *ripOffset = nullptr) const;
@@ -194,6 +198,26 @@ public:
 
     inline const Symbol *getSymbolHere() const {
         return &symbolHere;
+    }
+
+    inline Opcode_e getOp() const {
+        return op;
+    }
+
+    inline const OperandRM &getRm() const {
+        return rm;
+    }
+
+    inline const OperandR &getR() const {
+        return r;
+    }
+
+    inline const OperandDisp &getDisp() const {
+        return disp;
+    }
+
+    inline const OperandImm &getImm() const {
+        return imm;
     }
 
 private:

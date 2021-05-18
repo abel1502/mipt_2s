@@ -184,6 +184,10 @@ int main(int argc, char **argv) {
         }
 
         //of.dump();
+        if (of.optimize()) {
+            ERR("Optimization failed");
+            return 4;
+        }
 
         switch (of.compile(ofile)) {  // TODO: Also a switch
         case of.R_OK:

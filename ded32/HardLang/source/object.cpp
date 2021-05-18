@@ -662,6 +662,79 @@ void ObjectFactory::dump() const {
     }
 }
 
+ObjectFactory::result_e ObjectFactory::optimize() {
+    // Optimize rsp shifts
+    //return R_OK;
+
+    bool isRspOpChain = false;
+    int64_t delta = 0;
+    unsigned targetIdx = -1u;
+
+    for (unsigned i = 0; i < code.getSize(); ++i) {
+        if (code[i].isRemoved())
+            continue;
+
+        int64_t sign = 1;
+
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wswitch-enum"
+
+        switch (code[i].getOp()) {
+        case Opcode_e::sub_rm64_imm32:
+        case Opcode_e::sub_rm64_imm8:
+            sign = -1;
+            // Fallthrough
+        case Opcode_e::add_rm64_imm32:
+        case Opcode_e::add_rm64_imm8:
+            if (code[i].getRm().reg == REG_SP && (targetIdx == -1u || !code[i].getSymbolHere()->isUsed())) {
+                isRspOpChain = true;
+                delta += sign * code[i].getImm().val_q;
+
+                if (targetIdx == -1u)
+                    targetIdx = i;
+
+                code[i].remove();
+                break;
+            }
+            // Fallthrough
+        default:
+            if (isRspOpChain) {
+                if (targetIdx == -1u)
+                    targetIdx = i - 1;
+
+                code[targetIdx].restore();
+
+                if (0 <= delta && delta < 256) {
+                    code[targetIdx]
+                        .setOp(Opcode_e::add_rm64_imm8)
+                        .setImm(delta);
+                } else if (-256 <= delta && delta < 0) {
+                    code[targetIdx]
+                        .setOp(Opcode_e::sub_rm64_imm8)
+                        .setImm(-delta);
+                } else if (delta >= 0) {
+                    code[targetIdx]
+                        .setOp(Opcode_e::add_rm64_imm32)
+                        .setImm(delta);
+                } else {
+                    code[targetIdx]
+                        .setOp(Opcode_e::sub_rm64_imm32)
+                        .setImm(-delta);
+                }
+            }
+
+            isRspOpChain = false;
+            targetIdx = -1u;
+            delta = 0;
+            continue;
+        }
+
+        #pragma GCC diagnostic pop
+    }
+
+    return lastResult = R_OK;
+}
+
 //--------------------------------------------------------------------------------
 
 static constexpr unsigned SECTIONS_COUNT = 1;  // .text
