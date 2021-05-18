@@ -170,7 +170,7 @@ Parser::Error_e Parser::parse_FUNC_DEF(Program *prog) {
 
     P_TRYSYS(func->makeCode(&code));
 
-    P_TRY(parse_COMPOUND_STMT(code, nullptr), func->setHasCode(true), func->setHasCode(false));
+    P_TRY(parse_COMPOUND_STMT(code, nullptr), func->setHasCode(true), P_REQ_PUNCT(SEMI); func->setHasCode(false));
 
     P_TRYSYS(func->registerArgs());
 
@@ -286,7 +286,7 @@ Parser::Error_e Parser::parse_COMPOUND_STMT(Code *code, const Scope *parentScope
 
     P_REQ_NONTERM(STMTS, code);
 
-    code->getScope()->setParent(parentScope);
+    //code->getScope()->setParent(parentScope);
 
     P_REQ_PUNCT(RBRACE);
 

@@ -525,6 +525,9 @@ bool Lexer::parseNumber(Token *dest, FileBufIterator *iter) {
         curDigit = recognizeDigit(iter->cur());
 
         if (curDigit >= base) {
+            if (base == 10 && curDigit == 'e' - 'a' + 10)
+                break;  // It means we've encountered exponential notion
+
             ERR("Syntax error: unexpected digit '%c' for base %d", iter->cur(), base);
 
             TRY_B(dest->ctorErr());
