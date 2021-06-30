@@ -1,0 +1,1 @@
+Two educational projects utilizing SSE and AVX via intel intrinsics.
